@@ -560,8 +560,9 @@
       import { $, $$, delay, showEl, hideEl, prompt2, createFloatingWindow, sanitizeHtml, textToSpeech, sha256Text, dedent, downloadTextOrBlob, createGpt3Tokenizer, cosineDistance, createLoadingModal, applyObjectOverrides, objectKeysAndTypesAreValid, addBackgroundToElement, importStylesheet, htmlToElement, jsonToBlob } from "./utils.js?v=34";
 
       let JSON5;
-      (async function() {
+      const JSON5Ready = (async function() {
         JSON5 = await import('https://cdn.jsdelivr.net/npm/json5@2.2.2/dist/index.min.mjs').then(m => m.default);
+        return JSON5;
       })();
 
       // TODO: allow <style> when you work out how to scope it to the current message only - maybe just use a CSS parser and add .messageText prefix to selectors - https://github.com/jotform/css.js
@@ -572,8 +573,15 @@
       };
       DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
         if(data.attrName === "onclick") {
-          node.dataset.onClickCode = data.attrValue;
-          data.attrValue = "window.runCodeInCustomCodeIframe(this.dataset.onClickCode)";
+          // only allow message onclick handlers when the active thread's character actually has custom code
+          // (the code runs inside that character's sandboxed custom-code iframe, which the user opted into)
+          if(customCodeIframes[activeThreadId]) {
+            node.dataset.onClickCode = data.attrValue;
+            data.attrValue = "window.runCodeInCustomCodeIframe(this.dataset.onClickCode)";
+          } else {
+            data.keepAttr = false;
+            data.attrValue = "";
+          }
         }
       });
 
@@ -590,21 +598,27 @@
         renderer: markedRenderer,
       });
 
-      window.onerror = function(errorMsg, url, lineNumber, columnNumber, errorObj) {
-        alert(`Please report this error on the Discord or Github:\n\n${errorMsg}\n\nstack: ${errorObj?.stack}\n\nline: ${lineNumber}`);
-        if(errorObj?.stack.toLowerCase().includes("databaseclosederror")) {
+      // non-blocking toast notifications (replaces most alert() usage for non-fatal messages)
+      let toastTimeout = null;
+      function showToast(message, opts={}) {
+        const duration = opts.duration ?? (opts.type === "error" ? 8000 : 3000);
+        $.topNotificationContent.textContent = message;
+        $.topNotificationContent.style.background = opts.type === "error" ? "var(--error-bg)" : "var(--notification-bg-color)";
+        showEl($.topNotification);
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => hideEl($.topNotification), duration);
+      }
+      window.showToast = showToast;
 
-        }
+      window.onerror = function(errorMsg, url, lineNumber, columnNumber, errorObj) {
+        console.error("Unhandled error:", errorMsg, `line: ${lineNumber}`, errorObj);
+        showToast(`An unexpected error occurred: ${errorMsg} — please report this on the Discord or GitHub (full details are in the browser console).`, {type:"error"});
         return false;
       }
 
       if(!window.isSecureContext) {
         alert("Hey, looks like you're trying to host this locally, but you have hosted it in an insecure context - i.e. you're serving it on HTTP instead of HTTPS. Unfortunately there are a bunch of features that are disabled on HTTP connections for modern browsers. localhost is treated as a secure context for development purposes, but if you want to server it on the internet, then I recommend using Cloudflare - you just switch your domain's nameservers to them and then it's basically a button click and you've got HTTPS. Much easier than setting up your own certificate stuff.");
       }
-
-      $.messageFeed.addEventListener("keydown", async function(e) {
-        debugger;
-      });
 
       // polyfill for navigator.userActivation
       if(!navigator.userActivation) {
@@ -1158,7 +1172,8 @@
       $.exportDataButton.addEventListener("click", async function() {
         // choose export options
         let result = await prompt2({
-          exportUserData: {label: "Export user settings? (API key, avatar, name)", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}]},
+          exportUserData: {label: "Export user settings? (avatar, name)", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}], defaultValue: "no"},
+          exportApiKey: {label: "Include your OpenAI API secret key in the export? Only choose 'Yes' if you're keeping this file private - anyone with your key can spend your API credits.", type: "select", options:[{value: "no", content: "No (recommended)"}, {value: "yes", content: "Yes"}], defaultValue: "no", show:(data) => data.exportUserData==="yes"},
           exportType: {label: "Export type", type: "select", options:[{content: "All characters and chats", value:"allCharactersAndThreads"}, {content: "All characters, no chats", value:"allCharactersNoThreads"}, {content: "Specific characters", value:"specificCharacters"}, {content: "Specific chats", value:"specificThreads"}]},
           exportThreadIds: {show:(data) => data.exportType==="specificThreads", label: "Chat IDs to export (comma-separated numbers). Chat IDs are shown in bottom-right of each chat card in the side bar. The characters associated with these chats will be exported too.", type: "textLine", defaultValue: "", placeholder:"23,45,67"},
           exportCharacterIds: {show:(data) => data.exportType==="specificCharacters", label: "Character IDs to export (comma-separated numbers). Character IDs are shown next to the character name.", type: "textLine", defaultValue: "", placeholder:"3,12,7,14"},
@@ -1222,6 +1237,10 @@
         
         if(result.exportUserData === "no") {
           json.data.data.find(d => d.tableName === "misc").rows = [];
+        }
+        // never include the API key unless the user explicitly opted in
+        if(result.exportApiKey !== "yes") {
+          json.data.data.find(d => d.tableName === "misc").rows = json.data.data.find(d => d.tableName === "misc").rows.filter(r => r.key !== "openAiApiKey");
         }
         // remove datesApplicationWasUsedInThisBrowser because it's browser-specific 
         json.data.data.find(d => d.tableName === "misc").rows = json.data.data.find(d => d.tableName === "misc").rows.filter(r => r.key !== "datesApplicationWasUsedInThisBrowser");
@@ -2404,8 +2423,7 @@
             });
             const url = `${window.location.origin+window.location.pathname}#${urlHashData}`;
             await navigator.clipboard.writeText(url);
-            $.topNotificationContent.innerHTML = `Copied character link to clipboard!`;
-            showEl($.topNotification);
+            showToast(`Copied character link to clipboard!`);
 
             if(warnThatAvatarUrlWasRemoved) {
               await new Promise(resolve => setTimeout(resolve, 1000));
@@ -2417,8 +2435,6 @@
                 window.open(blobUrl, "_blank");
               }
             }
-
-            setTimeout(() => hideEl($.topNotification), 3000);
           });
 
           // edit character details if they click the edit button
@@ -3099,16 +3115,17 @@
       let userModelCapabilities = {};
       (async function() {
         userModelCapabilities = (await db.misc.get("userModelCapabilities"))?.value ?? {};
-        
+
+        // wait for the db to be open and the user's API key to be set
+        let openAiApiKey;
         while(1) {
           await delay(1000);
           if(!await db.isOpen()) {
             continue;
           }
-          // wait for user's API key to be set
-          let openAiApiKey = (await db.misc.get("openAiApiKey"))?.value;
-          if(!openAiApiKey) {
-            continue;
+          openAiApiKey = (await db.misc.get("openAiApiKey"))?.value;
+          if(openAiApiKey) {
+            break;
           }
         }
 
@@ -3117,7 +3134,7 @@
             "headers": { "authorization": `Bearer ${openAiApiKey}`, "content-type": "application/json" },
             "body": JSON.stringify({
               model: "gpt-4",
-              messages: [{role:"user", text:"Hi."}],
+              messages: [{role:"user", content:"Hi."}],
               max_tokens: 5,
             }),
             "method": "POST",
@@ -3125,7 +3142,7 @@
 
           userModelCapabilities["gpt-4"] = {
             canRun,
-            reason: canRun ? null : "You don't have access to the GPT-4 model. You need to join the waitlist: https://openai.com/waitlist/gpt-4-api",
+            reason: canRun ? null : "Your API key doesn't have access to the GPT-4 model.",
           };
         }
 
@@ -4736,9 +4753,11 @@
             try {
               json = JSON.parse(line);
             } catch(e) {
-              alert(`The streaming API response had some invalid JSON:\n\n${line}\n\n---\n\n${textBuffer}`);
-              console.error(e, line, textBuffer);
+              console.error("The streaming API response had some invalid JSON:", e, line, textBuffer);
+              showToast("The streaming API response contained some invalid JSON (see console for details).", {type:"error"});
+              return;
             }
+            if(!json?.choices?.[0]) return;
             let text;
 
             if(json.choices[0].text !== undefined) { // this indicates that we're streaming from a 'completion' (non-chat) model
@@ -6781,7 +6800,7 @@
         let pageLoadId = Math.random().toString();
         let iframeLoadPromise = new Promise((resolve, reject) => {
           function handler(e) {
-            if(e.data._id === pageLoadId) {
+            if(e.source === iframe.contentWindow && e.data._id === pageLoadId) {
               resolve();
               window.removeEventListener("message", handler);
             }
@@ -6926,10 +6945,10 @@
               }),
               window: Object.seal({
                 show: function(args={}) {
-                  window.parent.postMessage({type:"showWindow", threadId:${threadId}, args}, "*");
+                  window.parent.postMessage({type:"showWindow", threadId:${threadId}, args}, "${window.location.origin}");
                 },
                 hide: function(args={}) {
-                  window.parent.postMessage({type:"hideWindow", threadId:${threadId}, args}, "*");
+                  window.parent.postMessage({type:"hideWindow", threadId:${threadId}, args}, "${window.location.origin}");
                 },
               }),
               //getCompletion: async function(options) {
@@ -6987,8 +7006,9 @@
             function callParentWindow(data) {
               let _id = Math.random().toString()+Math.random().toString();
               return new Promise((resolve, reject) => {
-                window.parent.postMessage({_id, data, threadId:${threadId}}, "*");
+                window.parent.postMessage({_id, data, threadId:${threadId}}, "${window.location.origin}");
                 function handler(e) {
+                  if(e.source !== window.parent) return;
                   if(e.data._id === _id) {
                     window.removeEventListener("message", handler);
                     if(e.data.success) resolve(e.data.result);
@@ -7356,7 +7376,12 @@
       }
 
       let customCodeResolvers = {}; // id -> resolver
+      // note: custom code iframes are sandboxed (opaque origin), so e.origin is "null" - we verify the sender via e.source instead
+      function isTrustedCustomCodeSource(e) {
+        return Object.values(customCodeIframes).some(iframe => iframe.contentWindow === e.source);
+      }
       window.addEventListener("message", function(e) {
+        if(!isTrustedCustomCodeSource(e)) return;
         let resolver = customCodeResolvers[e.data._id];
         if(resolver) {
           if(e.data.success) {
@@ -7507,12 +7532,14 @@
             customCodeCompletionUsage[threadId] += tokens;
             if(customCodeCompletionUsage[threadId] > customCodeCompletionTokenWarnLimit && !threadIdsAllowedToGoOverTokenLimit.has(threadId)) {
               if(threadIdsBlockedFromGoingOverTokenLimit.has(threadId)) {
+                customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Completion token limit exceeded - the user has blocked further API usage by this character's custom code."}, "*");
                 return;
               }
               if(confirm(`This character's custom code has used ${customCodeCompletionUsage[threadId].toLocaleString()} tokens. Would you like to continue?`)) {
                 threadIdsAllowedToGoOverTokenLimit.add(threadId);
               } else {
                 threadIdsBlockedFromGoingOverTokenLimit.add(threadId);
+                customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Completion token limit exceeded - the user has blocked further API usage by this character's custom code."}, "*");
                 return;
               }
             }
@@ -7552,6 +7579,7 @@
       // this is for onclick handlers in messages
       window.runCodeInCustomCodeIframe = function(code) {
         let threadId = activeThreadId;
+        if(!customCodeIframes[threadId]) return; // no custom-code iframe to run this in
         let functionText = `function() {
           ${code}
         }`;
@@ -8161,7 +8189,7 @@
           });
           // create the history messages element:
           let ctn = document.createElement("div");
-          ctn.innerHTML = thread.userMessagesSentHistory.map(m => `<div class="historyItem" data-is-pinned="${m.isPinned}" data-message-text="${encodeURIComponent(m.text)}"><span class="pinButton">📌</span><span class="text">${m.text.slice(0, 500).replaceAll("\n", " ")}</span><span class="deleteButton">🗑️</span></div>`).join("");
+          ctn.innerHTML = thread.userMessagesSentHistory.map(m => `<div class="historyItem" data-is-pinned="${m.isPinned}" data-message-text="${encodeURIComponent(m.text)}"><span class="pinButton" role="button" aria-label="Pin message">📌</span><span class="text">${sanitizeHtml(m.text.slice(0, 500).replaceAll("\n", " "))}</span><span class="deleteButton" role="button" aria-label="Delete message from history">🗑️</span></div>`).join("");
           // position it above the message input text area, with same width:
           ctn.style.cssText = `
             max-height: min(40vh, 200px);
@@ -8258,6 +8286,7 @@
 
 
       $.settingsButton.addEventListener("click", async function() {
+        await JSON5Ready;
         // use prompt2 to collect user's name and avatar, using defaults from db.misc
         let userNameOriginal = (await db.misc.get("userName"))?.value || defaultUserName;
         let userAvatarUrlOriginal = (await db.misc.get("userAvatarUrl"))?.value || "";
@@ -8799,6 +8828,7 @@
           try {
             let loadingModal = createLoadingModal("Loading parser...");
             let ExifReader = await import('https://cdn.jsdelivr.net/npm/exifreader@4.12.0/+esm');
+            await JSON5Ready;
             loadingModal.delete();
 
             let tags = await ExifReader.load(file);
@@ -8989,7 +9019,18 @@
 
       let customPostPageLoadMainThreadCode = (await db.misc.get("customPostPageLoadMainThreadCode"))?.value || "";
       if(customPostPageLoadMainThreadCode.trim()) {
-        eval(customPostPageLoadMainThreadCode);
+        // this code runs with full access to the page (all your data, including your API key), so we require a
+        // one-time confirmation whenever the code changes, in case it was added by something other than the user
+        let codeHash = await sha256Text(customPostPageLoadMainThreadCode);
+        let approvedCodeHash = (await db.misc.get("approvedCustomMainThreadCodeHash"))?.value;
+        let approved = codeHash === approvedCodeHash;
+        if(!approved) {
+          approved = confirm(`Your settings contain custom code that runs on this page with FULL access to all your data (including your API key). Only run code that you wrote yourself or that comes from a source you trust.\n\nRun this code?\n\n${customPostPageLoadMainThreadCode.slice(0, 1000)}${customPostPageLoadMainThreadCode.length > 1000 ? "\n\n...(truncated - see Settings > advanced settings for the full code)" : ""}`);
+          if(approved) await db.misc.put({key:"approvedCustomMainThreadCodeHash", value:codeHash});
+        }
+        if(approved) {
+          eval(customPostPageLoadMainThreadCode);
+        }
       }
 
       if(await checkForHashCommand() === null) {
