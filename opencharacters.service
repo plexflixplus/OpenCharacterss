@@ -7,8 +7,10 @@ Type=simple
 WorkingDirectory=/opt/opencharacterss
 Environment=PORT=4000
 Environment=HOST=0.0.0.0
+Environment=PUBLIC_IP=100.87.19.163
 Environment=PUBLIC_URL=http://100.87.19.163:4000/
-ExecStart=/usr/bin/node server.js
+Environment=IFACE=eth0
+ExecStart=/opt/opencharacterss/start-service.sh
 Restart=always
 RestartSec=5
 

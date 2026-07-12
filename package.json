@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "start:service": "./start-service.sh",
     "daemon": "node daemon.js",
     "bridge": "node perchance-bridge.js"
   },
