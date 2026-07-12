@@ -1,0 +1,28 @@
+{
+  "name": "opencharacters",
+  "version": "1.0.0",
+  "description": "OpenCharacters - open-source CharacterAI-like chat app (single-file web app + optional Node server for server-side chat persistence, free proxied models, and the Perchance AI bridge).",
+  "main": "server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "daemon": "node daemon.js",
+    "bridge": "node perchance-bridge.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plexflixplus/OpenCharacterss.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/plexflixplus/OpenCharacterss/issues"
+  },
+  "homepage": "https://github.com/plexflixplus/OpenCharacterss#readme",
+  "optionalDependencies": {
+    "playwright": "^1.61.1"
+  }
+}
