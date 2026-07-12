@@ -7,7 +7,7 @@
 
 <p align="center"><b>⟶ <a href="https://plexflixplus.github.io/OpenCharacterss/">Try it!</a> ⟵</b></p>
 
-<p align="center"><sub>Static demo on GitHub Pages. For server-side chat sync, free Pollinations models, and reliable web-page character generation, run <code>node server.js</code> or <code>node daemon.js</code> locally (or on your own host).</sub></p>
+<p align="center"><sub>Static demo: <a href="https://plexflixplus.github.io/OpenCharacterss/">GitHub Pages</a> (enable once in repo Settings → Pages → Deploy from branch <code>gh-pages</code>). For server-side chat sync, free Pollinations models, and reliable web-page character generation, run <code>node server.js</code> or <code>node daemon.js</code> on your own host.</sub></p>
 
 <p align="center"><a href="https://discord.gg/5tkWXJFqPV">Discord Server</a></p>
 
