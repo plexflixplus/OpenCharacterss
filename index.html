@@ -988,6 +988,88 @@
 
       console.log("Database ready.");
 
+      // ===== Server-side chat persistence (optional) =====
+      // If the site is served by server.js (see repo root), chats are automatically persisted
+      // server-side via /api/sync, so they survive browser data clearing and are available from
+      // any browser that visits the site. If no sync server is detected (e.g. GitHub Pages),
+      // everything keeps working exactly as before, with chats stored locally in IndexedDB only.
+      //
+      // The `misc` table (API key + personal settings) is intentionally NEVER synced to the server.
+      const serverSyncTables = ["characters", "threads", "messages", "summaries", "memories", "lore", "usageStats"];
+      let serverSyncLastHash = null;
+      let serverSyncSaveInFlight = false;
+
+      async function serializeSyncedTables() {
+        const data = {};
+        for(const tableName of serverSyncTables) {
+          data[tableName] = await db.table(tableName).toArray();
+        }
+        return data;
+      }
+
+      async function importServerChatData(data) {
+        await db.transaction("rw", serverSyncTables.map(t => db.table(t)), async () => {
+          for(const tableName of serverSyncTables) {
+            await db.table(tableName).clear();
+            if(Array.isArray(data[tableName]) && data[tableName].length > 0) {
+              await db.table(tableName).bulkPut(data[tableName]);
+            }
+          }
+        });
+      }
+
+      async function saveChatsToServer() {
+        if(serverSyncSaveInFlight) return;
+        serverSyncSaveInFlight = true;
+        try {
+          const json = JSON.stringify({data: await serializeSyncedTables()});
+          const hash = await sha256Text(json);
+          if(hash === serverSyncLastHash) return; // nothing changed since last save
+          const response = await fetch("/api/sync", {method:"PUT", headers:{"content-type":"application/json"}, body:json});
+          if(!response.ok) throw new Error("HTTP "+response.status);
+          const result = await response.json();
+          serverSyncLastHash = hash;
+          await db.misc.put({key:"serverSyncMarker", value:{savedAt:result.savedAt, version:result.version}});
+        } catch(e) {
+          console.warn("Server-side chat save failed (will retry on the next change):", e);
+        } finally {
+          serverSyncSaveInFlight = false;
+        }
+      }
+
+      try {
+        const store = await fetch("/api/sync").then(r => r.ok && r.headers.get("content-type")?.includes("json") ? r.json() : null).catch(() => null);
+        if(store !== null && typeof store === "object" && "version" in store) {
+          const localMarker = (await db.misc.get("serverSyncMarker"))?.value;
+          if(store.data && store.savedAt && store.savedAt !== localMarker?.savedAt) {
+            // the server has a copy of the chats that this browser hasn't seen yet (saved from another
+            // browser/device, or this browser's local data was cleared) - restore it. Server copy wins.
+            console.log("Restoring chats from server (saved at " + new Date(store.savedAt).toISOString() + ")...");
+            const localHasData = (await db.threads.count()) > 0 || (await db.characters.count()) > 0;
+            if(localHasData) console.warn("Replacing this browser's local chat data with the server-side copy.");
+            await importServerChatData(store.data);
+            await db.misc.put({key:"serverSyncMarker", value:{savedAt:store.savedAt, version:store.version}});
+            serverSyncLastHash = await sha256Text(JSON.stringify({data: store.data}));
+            console.log("Chats restored from server.");
+          } else if(!store.data) {
+            // fresh server with no data yet - push whatever this browser has
+            await saveChatsToServer();
+          } else {
+            // in sync with the server - use the server copy as the change-detection baseline so any
+            // local changes made since (e.g. while offline) get pushed on the first save tick
+            serverSyncLastHash = await sha256Text(JSON.stringify({data: store.data}));
+          }
+          setInterval(saveChatsToServer, 10_000); // persist any changes every 10s
+          window.addEventListener("pagehide", () => { saveChatsToServer(); });
+          console.log("Server-side chat persistence is enabled.");
+        } else {
+          console.log("No sync server detected - chats are stored locally in this browser only.");
+        }
+      } catch(e) {
+        console.warn("Server-side chat persistence disabled due to an error:", e);
+      }
+      // ===== End server-side chat persistence =====
+
       function upgradeCharacterInitialMessagesArrayIfNeeded(character) {
         // upgrade from the ["foo", "bar"] format to [{author:"user", content:"foo"}, {author:"ai", content:"bar"}]
         if(character.initialMessages && character.initialMessages.length === 1 && character.initialMessages[0] === "") {

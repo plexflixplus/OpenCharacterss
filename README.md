@@ -30,6 +30,21 @@
 * Easily import character files and conversation data most other formats.
 * Send new feature ideas or bug reports [here](https://github.com/josephrocca/OpenCharacters/issues) or on our [Discord server](https://discord.gg/5tkWXJFqPV).
 
+## Server-side chat persistence (optional)
+
+By default all data stays in your browser's IndexedDB. If you want your chats stored **server-side** (so they survive browser data clearing and follow you between browsers/devices), serve the app with the included zero-dependency Node server:
+
+```bash
+node server.js   # then open http://localhost:3000
+```
+
+When served this way, the app automatically syncs your characters, chats, messages, memories, summaries, lore, and usage stats to the server (stored in `server-data/chats.json`) every 10 seconds, and restores them on page load in any browser that doesn't have them yet. The server copy wins if it's newer than what a given browser has seen.
+
+Notes:
+* Your `misc` settings table (which contains your OpenAI API key) is **never** sent to or stored on the server.
+* It's a single-user store with no authentication - don't expose it publicly without putting auth in front of it, since anyone who can reach the site can read/write the chats.
+* If you serve the app any other way (e.g. GitHub Pages or `python3 -m http.server`), sync silently disables itself and everything works exactly as before (browser-local storage only).
+
 ## Changelog
 
 Please see the `#announcements` channel on the [Discord server](https://discord.gg/5tkWXJFqPV) for latest updates.
