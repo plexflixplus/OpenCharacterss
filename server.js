@@ -18,6 +18,8 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+const PUBLIC_URL = process.env.PUBLIC_URL || null;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "server-data");
 const DATA_FILE = path.join(DATA_DIR, "chats.json");
@@ -365,8 +367,12 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`OpenCharacters server running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  const localUrl = `http://localhost:${PORT}`;
+  const bindUrl = HOST === "0.0.0.0" ? `http://0.0.0.0:${PORT}` : `http://${HOST}:${PORT}`;
+  console.log(`OpenCharacters server listening on ${bindUrl}`);
+  console.log(`Local access: ${localUrl}`);
+  if (PUBLIC_URL) console.log(`Public access: ${PUBLIC_URL}`);
   console.log(`Chat data is stored server-side in ${DATA_FILE}`);
   console.log(`Perchance bridge proxied at /api/perchance/* -> ${PERCHANCE_BRIDGE_ORIGIN}`);
   console.log(`Web-page fetch helper available at /api/fetch-page?url=...`);

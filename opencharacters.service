@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenCharacters Web Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/opencharacterss
+Environment=PORT=4000
+Environment=HOST=0.0.0.0
+Environment=PUBLIC_URL=http://100.87.19.163:4000/
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
