@@ -5,7 +5,9 @@
 
 <p align="center">Similar to CharacterAI, but open source, and with much deeper character customization.</p>
 
-<p align="center"><b>⟶ <a href="https://josephrocca.github.io/OpenCharacters">Try it!</a> ⟵</b></p>
+<p align="center"><b>⟶ <a href="https://plexflixplus.github.io/OpenCharacterss/">Try it!</a> ⟵</b></p>
+
+<p align="center"><sub>Static demo on GitHub Pages. For server-side chat sync, free Pollinations models, and reliable web-page character generation, run <code>node server.js</code> or <code>node daemon.js</code> locally (or on your own host).</sub></p>
 
 <p align="center"><a href="https://discord.gg/5tkWXJFqPV">Discord Server</a></p>
 
@@ -80,7 +82,7 @@ The page is fetched server-side via `/api/fetch-page` (no CORS limits); if you'r
 **Bookmarklet:** you can trigger this from *any* page you're browsing. Make a bookmark whose URL is the following (replace the base URL with wherever you host OpenCharacters):
 
 ```js
-javascript:(()=>{location.href='http://localhost:3000/#'+encodeURIComponent(JSON.stringify({generateCharacterFromUrl:location.href}))})()
+javascript:(()=>{location.href='https://plexflixplus.github.io/OpenCharacterss/#'+encodeURIComponent(JSON.stringify({generateCharacterFromUrl:location.href}))})()
 ```
 
 Clicking it opens OpenCharacters already generating a character from the page you were on. The same `#{"generateCharacterFromUrl":"https://..."}` URL-hash command works if you construct the link yourself.

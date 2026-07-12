@@ -21,7 +21,7 @@
   "bugs": {
     "url": "https://github.com/plexflixplus/OpenCharacterss/issues"
   },
-  "homepage": "https://github.com/plexflixplus/OpenCharacterss#readme",
+  "homepage": "https://plexflixplus.github.io/OpenCharacterss/",
   "optionalDependencies": {
     "playwright": "^1.61.1"
   }
