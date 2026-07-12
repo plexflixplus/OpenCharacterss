@@ -1,24 +1,24 @@
-(**Note**: This repo is in maintenance mode at the moment - bug fixes and small updates only. If you're working on adding substantial new features via a fork, please open an issue with a link and I'll put it here. Note that the system is very extensible via your character's [custom code](https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-code.md), so you should see if it's possible to achieve the feature that you want via that.)
+(**Standalone private deployment** — forked from [josephrocca/OpenCharacters](https://github.com/josephrocca/OpenCharacters) with server-side chat sync, free no-key models, a Perchance AI bridge, and web-page character generation. Not affiliated with the upstream project.)
 
 ![banner](https://user-images.githubusercontent.com/1167575/225629372-eb4de08a-ed62-4660-a83d-6e42a5c092d7.jpg)
 
 
 <p align="center">Similar to CharacterAI, but open source, and with much deeper character customization.</p>
 
-<p align="center"><b>⟶ <a href="https://plexflixplus.github.io/OpenCharacterss/">Try it!</a> ⟵</b></p>
+<p align="center"><b>Private repo — run on your own host:</b> <code>node server.js</code> or <code>node daemon.js</code></p>
 
-<p align="center"><sub>Static demo: <a href="https://plexflixplus.github.io/OpenCharacterss/">GitHub Pages</a> (enable once in repo Settings → Pages → Deploy from branch <code>gh-pages</code>). For server-side chat sync, free Pollinations models, and reliable web-page character generation, run <code>node server.js</code> or <code>node daemon.js</code> on your own host.</sub></p>
+<p align="center"><sub>First-time setup: <code>bash scripts/setup-private-repo.sh</code> (creates <code>plexflixplus/opencharacters</code> as a private standalone repo).</sub></p>
 
-<p align="center"><a href="https://discord.gg/5tkWXJFqPV">Discord Server</a></p>
+<p align="center"><a href="https://discord.gg/5tkWXJFqPV">Discord Server</a> (upstream community)</p>
 
 ## Features:
-* The whole web app is a single HTML file - no server (serve it [locally](https://github.com/josephrocca/OpenCharacters/blob/main/docs/local-setup.md) if you want).
+* The whole web app is a single HTML file - no server (serve it [locally](docs/local-setup.md) if you want).
 * All your data is stored in your browser's local storage (again, there is no server).
 * Share characters with a link - all character data is embedded within the link.
 * Auto-summarization algorithm (for old messages) which extends effective character memory/context size massively.
 * Characters automatically compress messages into 'memories' and retrieve relevant memories based on context. Can handle as many memories as you need - tens of thousands or more.
 * Add lorebook(s) to your character, and add thread-specific lore with the `/lore` command.
-* Fully extensible with [custom code](https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-code.md). See examples [here](https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-code-examples.md).
+* Fully extensible with [custom code](docs/custom-code.md). See examples [here](docs/custom-code-examples.md).
   * Give your character access to the internet
   * Create your own slash commands
   * Give your character a video avatar (custom code has its own iframe & can display arbitrary content)
@@ -27,10 +27,23 @@
   * Give your character an internal thought process that runs alongside the chat
   * Give your character a voice via the browser's built-in TTS, or via an external API like ElevenLabs
   * Characters can [edit their own personality and custom code](https://tinyurl.com/4ccnn9zb) - self-improving and change over time
-  * Allow your character to execute [Python](https://github.com/josephrocca/OpenCharacters/blob/main/docs/running-python-code.md) or JavaScript code.
-* Currently supports OpenAI APIs [and most Hugging Face models](https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-models.md).
+  * Allow your character to execute [Python](docs/running-python-code.md) or JavaScript code.
+* Currently supports OpenAI APIs [and most Hugging Face models](docs/custom-models.md).
 * Easily import character files and conversation data most other formats.
-* Send new feature ideas or bug reports [here](https://github.com/josephrocca/OpenCharacters/issues) or on our [Discord server](https://discord.gg/5tkWXJFqPV).
+
+## Private standalone repository
+
+This project is meant to live in its **own private GitHub repo** (not the public `OpenCharacterss` fork). From a machine logged into GitHub as `plexflixplus`:
+
+```bash
+bash scripts/setup-private-repo.sh
+```
+
+That creates **`plexflixplus/opencharacters`** (private, not a fork), pushes `main`, and switches `origin` to the new repo. Optionally delete the old public fork afterward:
+
+```bash
+gh repo delete plexflixplus/OpenCharacterss --yes
+```
 
 ## Server-side chat persistence (optional)
 
@@ -45,7 +58,7 @@ When served this way, the app automatically syncs your characters, chats, messag
 Notes:
 * Your `misc` settings table (which contains your OpenAI API key) is **never** sent to or stored on the server.
 * It's a single-user store with no authentication - don't expose it publicly without putting auth in front of it, since anyone who can reach the site can read/write the chats.
-* If you serve the app any other way (e.g. GitHub Pages or `python3 -m http.server`), sync silently disables itself and everything works exactly as before (browser-local storage only).
+* If you serve the app as a static file only (e.g. `python3 -m http.server`), sync silently disables itself and everything works exactly as before (browser-local storage only).
 
 ## Free models (no API key) & the Perchance AI bridge
 
@@ -82,7 +95,7 @@ The page is fetched server-side via `/api/fetch-page` (no CORS limits); if you'r
 **Bookmarklet:** you can trigger this from *any* page you're browsing. Make a bookmark whose URL is the following (replace the base URL with wherever you host OpenCharacters):
 
 ```js
-javascript:(()=>{location.href='https://plexflixplus.github.io/OpenCharacterss/#'+encodeURIComponent(JSON.stringify({generateCharacterFromUrl:location.href}))})()
+javascript:(()=>{location.href='http://localhost:3000/#'+encodeURIComponent(JSON.stringify({generateCharacterFromUrl:location.href}))})()
 ```
 
 Clicking it opens OpenCharacters already generating a character from the page you were on. The same `#{"generateCharacterFromUrl":"https://..."}` URL-hash command works if you construct the link yourself.
