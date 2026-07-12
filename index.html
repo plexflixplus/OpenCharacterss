@@ -564,6 +564,7 @@
             <h2 style="text-align:center;margin-bottom: 0.5rem;">Your Characters</h2>
             <div style="margin-bottom: 0.5rem;display: flex;justify-content: center;">
               <button id="newCharacterButton" style="padding: 0.25rem;">🆕 new character</button>
+              <button id="newCharacterFromWebPageButton" style="padding: 0.25rem; margin-left: 0.5rem;">🌐 from web page</button>
               <!-- <button id="newFolderCharacterButton" style="padding: 0.25rem; margin-left: 0.5rem;">📁 new folder</button> -->
             </div>
           </div>
@@ -1327,7 +1328,17 @@
 
       // for openai and webgpu/webnn models (i.e. you don't need to setup your own inference server, and most people already have an openai account):
       // note: tokenPricing is per 1000 tokens (USD), and is an estimate only - check https://openai.com/pricing for current prices
+      //
+      // model object fields of note:
+      //  - apiKey: "<OPENAI>" means "use the user's saved OpenAI key"; null means "no key needed" (free/keyless models); a string is sent as-is
+      //  - payloadModelName: the value put in the request body's `model` field, if it differs from the app-facing `name` (lets us give friendly names)
+      //  - free: true => shown in the "Free (no API key)" group of the model dropdowns, and never triggers the OpenAI-key prompt
+      //  - group: optional dropdown group label (defaults are derived from `free`/endpoint if not set)
       let broadlyAvailableModels = [
+        // ===== OpenAI models (need an API key) =====
+        // (Free, no-API-key models like Pollinations and Perchance are registered dynamically at
+        //  startup by detectServerModelProviders() below - they're routed through the local server's
+        //  proxy because those providers block direct browser requests. See server.js.)
         {name:"gpt-4o-mini", shortLabel:"gpt-4o-mini - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.00015, completion: 0.0006}},
         {name:"gpt-4o", shortLabel:"gpt-4o - excellent, long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.0025, completion: 0.01}},
         {name:"gpt-4.1", shortLabel:"gpt-4.1 - excellent, very long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:1000000, type:"chat-completion", tokenPricing:{prompt: 0.002, completion: 0.008}},
@@ -1352,10 +1363,74 @@
           availableModels[m.name] = m;
         }
         // console.log("updateModelList", availableModels);
-        let currentValue = $.threadModelSelector;
-        $.threadModelSelector.innerHTML = modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => `<option value="${m.name}" ${m.name === currentValue ? "selected" : ""}>${m.name}</option>`).join("");
+        let currentValue = $.threadModelSelector.value;
+        let selectableModels = modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion");
+        // group the models in the dropdown so free/OpenAI/custom options are easy to tell apart:
+        function groupFor(m) {
+          if(m.group) return m.group;
+          if(m.free) return "Free (no API key)";
+          if(m.endpointUrl.startsWith("https://api.openai.com")) return "OpenAI (needs API key)";
+          return "Custom / other";
+        }
+        let groupOrder = [];
+        let modelsByGroup = {};
+        for(let m of selectableModels) {
+          let g = groupFor(m);
+          if(!modelsByGroup[g]) { modelsByGroup[g] = []; groupOrder.push(g); }
+          modelsByGroup[g].push(m);
+        }
+        $.threadModelSelector.innerHTML = groupOrder.map(g => `<optgroup label="${sanitizeHtml(g)}">` + modelsByGroup[g].map(m => `<option value="${sanitizeHtml(m.name)}" ${m.name === currentValue ? "selected" : ""}>${sanitizeHtml(m.shortLabel || m.name)}</option>`).join("") + `</optgroup>`).join("");
       }
       updateModelList();
+
+      // Detect optional server-side model providers and register them as selectable models.
+      // The free providers (Pollinations, Perchance) block direct browser requests, so they're
+      // routed through the local server's proxy. This is all best-effort: if the app is opened
+      // as a static file (no server), or a provider isn't verified/available, we just don't show
+      // that model - the user can always use their OpenAI key or a custom model instead.
+      let serverModelProvidersReady = (async function detectServerModelProviders() {
+        let serverPresent = false;
+        try {
+          let health = await fetch("/api/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+          serverPresent = !!(health && health.ok);
+        } catch(e) {}
+
+        let added = false;
+        if(serverPresent) {
+          // Pollinations - free, no API key, proxied server-side to avoid browser-origin blocks
+          if(!broadlyAvailableModels.some(m => m.name === "pollinations")) {
+            broadlyAvailableModels.push({
+              name: "pollinations",
+              shortLabel: "🆓 Pollinations (GPT-OSS-20B) - free, no API key",
+              payloadModelName: "openai",
+              endpointUrl: location.origin + "/api/llm-proxy?target=" + encodeURIComponent("https://text.pollinations.ai/openai"),
+              modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
+              maxSequenceLength: 8000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
+            });
+            added = true;
+          }
+          // Perchance - only if the bridge has actually verified (produced text) at least once
+          try {
+            let ph = await fetch("/api/perchance/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+            if(ph && ph.ready && !broadlyAvailableModels.some(m => m.name === "perchance")) {
+              broadlyAvailableModels.push({
+                name: "perchance",
+                shortLabel: "🆓 Perchance AI - free, no API key (via bridge)",
+                endpointUrl: location.origin + "/api/perchance/v1/chat/completions",
+                modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
+                maxSequenceLength: 6000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
+              });
+              added = true;
+              console.log("Perchance AI bridge is verified - the 'perchance' free model is available.");
+            } else if(!ph || !ph.ready) {
+              console.log("Perchance AI bridge not verified yet - the 'perchance' model won't be shown (normal on cloud/datacenter IPs where Cloudflare Turnstile refuses to verify).");
+            }
+          } catch(e) {}
+          if(added) await updateModelList();
+        } else {
+          console.log("No OpenCharacters server detected - free proxied models (Pollinations/Perchance) are unavailable. Use an OpenAI key or a custom model.");
+        }
+      })();
 
 
       // export data if they click export button
@@ -2683,6 +2758,167 @@
         const character = await addCharacter(result);
         await createNewThreadWithCharacterId(character.id);
       });
+
+      // ===== Generate a character from any web page =====
+
+      // Fetch a web page's HTML. Tries the server-side helper first (no CORS limits),
+      // then a direct browser fetch, then the configurable CORS proxy - so it works
+      // whether the app is served by server.js or opened as a static file.
+      async function fetchWebPageHtml(url) {
+        // 1) server-side helper (best - avoids CORS entirely)
+        try {
+          let r = await fetch("/api/fetch-page?url=" + encodeURIComponent(url));
+          if(r.ok) {
+            let json = await r.json();
+            if(json?.ok && json.html) return {html: json.html, finalUrl: json.url || url};
+          }
+        } catch(e) { /* server helper not available - fall through */ }
+        // 2) direct fetch
+        try {
+          let r = await fetch(url);
+          if(r.ok) return {html: await r.text(), finalUrl: r.url || url};
+        } catch(e) { /* CORS or network - fall through */ }
+        // 3) CORS proxy
+        let r = await fetch(corsProxiedUrl(url));
+        if(!r.ok) throw new Error("could not fetch the page (status " + r.status + ")");
+        return {html: await r.text(), finalUrl: url};
+      }
+
+      // Extract a title, an og:image (used as avatar), and readable text from raw HTML.
+      function extractReadableContentFromHtml(html, baseUrl) {
+        let doc;
+        try {
+          doc = new DOMParser().parseFromString(html, "text/html");
+        } catch(e) {
+          return {title: "", imageUrl: "", text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()};
+        }
+        // remove noise:
+        doc.querySelectorAll("script, style, noscript, svg, iframe, nav, footer, header, aside, form, template").forEach(el => el.remove());
+
+        let title = (doc.querySelector("title")?.textContent || "").trim();
+        let ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute("content");
+        if(ogTitle) title = ogTitle.trim();
+
+        let metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute("content")
+          || doc.querySelector('meta[property="og:description"]')?.getAttribute("content") || "";
+
+        let imageUrl = doc.querySelector('meta[property="og:image"]')?.getAttribute("content")
+          || doc.querySelector('meta[name="twitter:image"]')?.getAttribute("content") || "";
+        if(imageUrl && baseUrl) {
+          try { imageUrl = new URL(imageUrl, baseUrl).href; } catch(e) {}
+        }
+
+        // prefer main/article content if present:
+        let contentRoot = doc.querySelector("main, article") || doc.body || doc.documentElement;
+        let bodyText = (contentRoot?.textContent || "").replace(/\s+/g, " ").trim();
+
+        let text = [title, metaDesc, bodyText].filter(t => t).join("\n\n");
+        return {title, imageUrl, text};
+      }
+
+      // pick a sensible default model for generation (prefer a free/no-key model so this works without an API key)
+      function defaultGenerationModelName() {
+        let freeModel = broadlyAvailableModels.find(m => m.free && (m.type === "chat-completion" || m.type === "completion"));
+        if(freeModel) return freeModel.name;
+        return "gpt-4o-mini";
+      }
+
+      async function generateCharacterFromWebPage({url, hint, modelName}) {
+        let loadingModal = createLoadingModal("Reading the web page...");
+        try {
+          let {html, finalUrl} = await fetchWebPageHtml(url);
+          let {title, imageUrl, text} = extractReadableContentFromHtml(html, finalUrl);
+          if(!text || text.length < 40) throw new Error("couldn't extract meaningful text from that page");
+
+          // trim the page text so the prompt comfortably fits the model's context:
+          let modelObj = availableModels[modelName];
+          let maxContext = modelObj?.maxSequenceLength || 6000;
+          let charBudget = Math.min(text.length, Math.max(2000, (maxContext - 1200) * 3)); // ~3 chars/token, leave room for reply+instructions
+          let pageText = text.slice(0, charBudget);
+
+          loadingModal.updateContent("Generating character with the AI...");
+
+          let instruction = `You are helping create a role-play chat character based on a web page.\n\n`
+            + `WEB PAGE TITLE: ${title || "(none)"}\n`
+            + `WEB PAGE URL: ${finalUrl}\n`
+            + (hint ? `USER GUIDANCE: ${hint}\n` : "")
+            + `\nWEB PAGE CONTENT (may be truncated):\n"""\n${pageText}\n"""\n\n`
+            + `Create a chat character inspired by this page. Reply with ONLY a JSON object (no markdown, no commentary) of exactly this shape:\n`
+            + `{\n`
+            + `  "name": "short character name",\n`
+            + `  "roleInstruction": "a detailed system/role instruction written in second person (\\"You are ...\\") describing who the character is, their personality, knowledge and how they speak, grounded in the web page",\n`
+            + `  "reminderMessage": "a short reminder that keeps the AI in character",\n`
+            + `  "greeting": "the character's first message to the user"\n`
+            + `}`;
+
+          let responseText = await getChatCompletion({
+            messages: [{role:"user", content:instruction}],
+            modelName,
+            temperature: 0.7,
+          });
+          if(!responseText) throw new Error("the AI didn't return anything");
+
+          // the model may wrap JSON in a code fence or add stray text - extract the JSON object:
+          let jsonText = responseText.trim();
+          let fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+          if(fenceMatch) jsonText = fenceMatch[1].trim();
+          else {
+            let braceStart = jsonText.indexOf("{");
+            let braceEnd = jsonText.lastIndexOf("}");
+            if(braceStart !== -1 && braceEnd !== -1) jsonText = jsonText.slice(braceStart, braceEnd + 1);
+          }
+
+          await JSON5Ready;
+          let parsed;
+          try { parsed = JSON5.parse(jsonText); }
+          catch(e) { throw new Error("the AI's response wasn't valid JSON - please try again.\n\n" + responseText.slice(0, 300)); }
+
+          let character = {
+            name: (parsed.name || title || "Web Character").toString().slice(0, 60),
+            roleInstruction: (parsed.roleInstruction || "").toString(),
+            reminderMessage: (parsed.reminderMessage || "").toString(),
+            avatar: {url: imageUrl || ""},
+            modelName,
+          };
+          if(parsed.greeting) {
+            character.initialMessages = [{author:"ai", content: parsed.greeting.toString()}];
+          }
+          return character;
+        } finally {
+          loadingModal.delete();
+        }
+      }
+
+      async function promptAndGenerateCharacterFromWebPage(defaultUrl="") {
+        try { await serverModelProvidersReady; } catch(e) {} // make sure free models are registered before we build the dropdown
+        let chatModels = broadlyAvailableModels.filter(m => m.type === "chat-completion" || m.type === "completion");
+        let modelOptions = chatModels.map(m => ({value:m.name, content:m.shortLabel || m.name}));
+        let promptResult = await prompt2({
+          url: {label: "🌐 Web page URL to build a character from:", type:"textLine", placeholder:"https://en.wikipedia.org/wiki/Ada_Lovelace", defaultValue: defaultUrl, focus:true},
+          hint: {label: "Optional guidance (tone, which person/thing to become, etc.):", type:"textLine", placeholder:"(optional) e.g. make them witty and speak in the first person"},
+          modelName: {label: "🤖 Model to generate with:", infoTooltip:"A free model is selected by default so this works without an API key.", type:"select", options: modelOptions, defaultValue: defaultGenerationModelName()},
+        }, {submitButtonText: "Generate character"});
+        if(!promptResult) return;
+        if(!promptResult.url || !/^https?:\/\//i.test(promptResult.url.trim())) {
+          showToast("Please enter a valid http(s):// URL.", {type:"error"});
+          return;
+        }
+        let character;
+        try {
+          character = await generateCharacterFromWebPage({url: promptResult.url.trim(), hint: promptResult.hint?.trim(), modelName: promptResult.modelName});
+        } catch(e) {
+          console.error("generateCharacterFromWebPage error:", e);
+          showToast("Couldn't generate a character from that page: " + e.message, {type:"error", duration:9000});
+          return;
+        }
+        // hand off to the normal character editor so the user can review/tweak before saving:
+        let result = await characterDetailsPrompt(character, {submitButtonText: "add character"});
+        if(!result) return;
+        let newCharacter = await addCharacter(result);
+        await createNewThreadWithCharacterId(newCharacter.id);
+      }
+
+      $.newCharacterFromWebPageButton.addEventListener("click", () => promptAndGenerateCharacterFromWebPage());
 
       // $.newFolderCharacterButton.addEventListener("click", async function() {
       //   let folderName = prompt("Folder name:");
@@ -4927,6 +5163,8 @@
 
         let modelObj = availableModels[modelName];
         let apiKey = modelObj.apiKey;
+        // some providers name their models differently than we label them in the UI (e.g. our "pollinations" -> their "openai")
+        let payloadModelName = modelObj.payloadModelName ?? modelName;
         
         if(apiKey === "<OPENAI>") {
           apiKey = await getOpenAiApiKey();
@@ -5039,7 +5277,7 @@
           let tokensInPrompt = await countTokensInMessages(messagesArr, modelName);
 
           let data = {
-            model: modelName,
+            model: payloadModelName,
             messages: messagesArr,
             temperature: replyingCharacter.temperature ?? 0.7,
           };
@@ -5112,7 +5350,7 @@
           }
 
           let data = {
-            model: modelName,
+            model: payloadModelName,
             prompt,
             temperature: replyingCharacter.temperature ?? 0.7,
             stop: [`\n\n[[`],
@@ -5234,6 +5472,7 @@
 
         let modelObj = availableModels[modelName];
         let apiKey = modelObj.apiKey;
+        let payloadModelName = modelObj.payloadModelName ?? modelName;
         if(apiKey === "<OPENAI>") {
           apiKey = (await db.misc.get("openAiApiKey"))?.value;
         }
@@ -5263,7 +5502,7 @@
         if(modelType === "chat-completion") {
 
           let data = {
-            model:modelName,
+            model:payloadModelName,
             messages,
             temperature: temperature ?? 0.7,
           };
@@ -5303,7 +5542,7 @@
           }
 
           let data = {
-            model:modelName,
+            model:payloadModelName,
             prompt: messagesFinal.map(m => `[[${m.name}]]: ${m.content}`).join("\n\n") + `\n\n[[${aiName}]]: `,
             temperature: temperature ?? 0.7,
             stop: [`\n\n[[`],
@@ -5332,7 +5571,7 @@
           result = json?.choices?.[0].text.trim();
         }
 
-        if(apiTokenUsage) {
+        if(apiTokenUsage && threadId !== undefined) { // threadId can be undefined for one-off completions (e.g. generating a character from a web page)
           let usageData = {prompt:apiTokenUsage.prompt_tokens, completion:apiTokenUsage.completion_tokens, total:apiTokenUsage.total_tokens};
           await trackTokenUsage({threadId, modelName, usageData});
         }
@@ -9205,6 +9444,14 @@
           window.location.hash = "";
           ignoreHashChange = false;
           return "addCharacter";
+        } else if(urlHashJson.generateCharacterFromUrl) {
+          // e.g. #{"generateCharacterFromUrl":"https://example.com"} - powers the "character from web page" bookmarklet
+          let sourceUrl = String(urlHashJson.generateCharacterFromUrl);
+          ignoreHashChange = true;
+          window.location.hash = "";
+          ignoreHashChange = false;
+          await promptAndGenerateCharacterFromWebPage(sourceUrl);
+          return "generateCharacterFromUrl";
         } else {
           return null;
         }
