@@ -610,6 +610,16 @@
       }
       window.showToast = showToast;
 
+      // used for non-fatal API/network errors that previously interrupted the user with blocking alert() popups
+      function reportApiError(context, e) {
+        console.error(context, e);
+        if(e?.stack?.toString().toLowerCase().includes("failed to fetch")) {
+          showToast("Network error while contacting the AI API. This can happen now and then - please try again. If it happens often, please report it on GitHub or Discord (details are in the browser console).", {type:"error"});
+        } else {
+          showToast(`Error while contacting the AI API: ${e?.message ?? e} (details are in the browser console)`, {type:"error"});
+        }
+      }
+
       window.onerror = function(errorMsg, url, lineNumber, columnNumber, errorObj) {
         console.error("Unhandled error:", errorMsg, `line: ${lineNumber}`, errorObj);
         showToast(`An unexpected error occurred: ${errorMsg} — please report this on the Discord or GitHub (full details are in the browser console).`, {type:"error"});
@@ -1132,24 +1142,32 @@
       window.db = db;
 
 
+      // The CORS proxy is used to fetch lore files and to let custom code make arbitrary web requests.
+      // It's user-configurable (see advanced settings) so the app keeps working if the default proxy goes down.
+      // Code for the default proxy server is here: https://replit.com/@joe64/opencharacters-cors-proxy (now hosted on Glitch)
+      const defaultCorsProxyUrl = "https://opencharacters-cors-proxy.glitch.me";
+      let corsProxyUrl = (await db.misc.get("corsProxyUrl"))?.value || defaultCorsProxyUrl;
+      function corsProxiedUrl(url) {
+        return corsProxyUrl.replace(/\/+$/, "") + "/?url=" + encodeURIComponent(url);
+      }
+
       let availableModels = {};
 
       // for openai and webgpu/webnn models (i.e. you don't need to setup your own inference server, and most people already have an openai account):
+      // note: tokenPricing is per 1000 tokens (USD), and is an estimate only - check https://openai.com/pricing for current prices
       let broadlyAvailableModels = [
-        {name:"gpt-3.5-turbo", shortLabel:"gpt-3.5-turbo - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
-        {name:"gpt-3.5-turbo-16k", shortLabel:"gpt-3.5-turbo-16k - 4x longer memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:16384, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
-        {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        // {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - more controllable", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        {name:"gpt-4-turbo-32k", shortLabel:"gpt-4-turbo - excellent, 4x longer memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:32768, type:"chat-completion", tokenPricing:{prompt: 0.01, completion: 0.03}},
-        {name:"gpt-4", shortLabel:"gpt-4 - excellent, 2x longer memory, expensive", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"chat-completion", tokenPricing:{prompt: 0.03, completion: 0.06}},
-        {name:"text-davinci-003", shortLabel:"text-davinci-003 - creative/expensive, DEPRECATED Jan 2024", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.02, completion: 0.02}},
-        {name:"gpt-3.5-turbo-0301", shortLabel:"gpt-3.5-turbo-0301, old/DEPRECATED June 2024", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        {name:"text-embedding-ada-002", shortLabel:"text-embedding-ada-002", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"text-embedding", tokenPricing:{prompt:0.0004, completion: 0.0004}},
+        {name:"gpt-4o-mini", shortLabel:"gpt-4o-mini - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.00015, completion: 0.0006}},
+        {name:"gpt-4o", shortLabel:"gpt-4o - excellent, long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.0025, completion: 0.01}},
+        {name:"gpt-4.1", shortLabel:"gpt-4.1 - excellent, very long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:1000000, type:"chat-completion", tokenPricing:{prompt: 0.002, completion: 0.008}},
+        {name:"gpt-4.1-mini", shortLabel:"gpt-4.1-mini - good/fast/cheap, very long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:1000000, type:"chat-completion", tokenPricing:{prompt: 0.0004, completion: 0.0016}},
+        {name:"gpt-3.5-turbo", shortLabel:"gpt-3.5-turbo - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
+        {name:"gpt-3.5-turbo-16k", shortLabel:"gpt-3.5-turbo-16k - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:16384, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
+        {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - legacy completion model", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
+        {name:"gpt-4-turbo-32k", shortLabel:"gpt-4-turbo-32k - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:32768, type:"chat-completion", tokenPricing:{prompt: 0.01, completion: 0.03}},
+        {name:"gpt-4", shortLabel:"gpt-4 - legacy, expensive", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"chat-completion", tokenPricing:{prompt: 0.03, completion: 0.06}},
+        {name:"gpt-3.5-turbo-0301", shortLabel:"gpt-3.5-turbo-0301 - legacy/DEPRECATED", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
+        {name:"text-embedding-ada-002", shortLabel:"text-embedding-ada-002", endpointUrl:"https://api.openai.com/v1/embeddings", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"text-embedding", tokenPricing:{prompt:0.0004, completion: 0.0004}},
       ];
-
-      if(Date.now() > new Date("2024-01-04").getTime()) {
-        broadlyAvailableModels = broadlyAvailableModels.filter(m => m.name !== "text-davinci-003");
-      }
       
       async function updateModelList() {
         // console.log("updateModelList");
@@ -2836,7 +2854,7 @@
           reminderMessage: { label: "💭 Reminder message - an invisible system message that is placed before every AI response (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message is inserted as a reminder at the end of the chat right before each AI response. This will always be the last/most-recent message that the AI sees when writing its response. If you later decide to edit this, all existing and new threads will be immediately updated. This message is not seen/summarized by the summarization algorithm - it will always be present as the final message.", height:"fit-content", minHeight:"3rem", type:"text", placeholder: "Stay in character! Sammy will now respond without breaking character.", defaultValue: defaultValues.reminderMessage || "" },
           initialMessagesText: { label: `💬 Initial chat messages (optional). Useful for extra alignment to character. Follow the format explained <a href="https://github.com/josephrocca/OpenCharacters/blob/main/docs/initial-messages.md" target='blank'>here</a>.`, infoTooltip:"During the initialization of every new thread with this character, these messages will be created and placed at the start of the thread. Note that the summarization algorithm will eventually summarize these messages - so they won't stay around forever (unlike the instruction and reminder messages, which *do* stay around forever). Also note that if you edit the initial messages, only *new* threads will have the updated initial messages. In other words, once a chat thread has been created, the initial messages that are added to a thread during init 'belong' to that thread, not to the character.", type:"text", height:"fit-content", placeholder: "[USER]: Hey Sammy, do you have opinions?\n[SYSTEM]: The next message will include an emoji.\n[AI]: Yes! I have lots of opinions. 🤔\n[SYSTEM; hiddenFrom=ai]: The AI can't see this message. Useful for user instructions.", defaultValue: initialMessagesText ?? "" },
           avatarUrl: { label: "👤 Avatar URL (png/jpg/etc):", type:"textLine", placeholder: "(optional)", defaultValue: defaultValues.avatar?.url || "" },
-          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"GPT-4 is really smart, but expensive (about 15x price of gpt-3.5-turbo). If you use gpt-3.5-turbo and set the 'temperature' option (see advanced settings) to 1, then apparently (according to community members) it's pretty close to DaVinci in terms of creativity and overall quality. DaVinci is overpriced given its performance - GPT-4 is significantly better and only ~1.5x the price.", type:"select", options:[{content:"GOOD/CHEAP (currently: gpt-3.5-turbo)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4)", value:"great"}, ...broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => ({value:m.name, content:m.shortLabel}))], defaultValue: defaultValues.modelName || "good" },
+          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"'GOOD/CHEAP' and 'GREAT/EXPENSIVE' automatically map to a sensible current model, so they're the safest choices if you want your character to keep working as models come and go. You can also pick a specific model, or add your own via the custom model configs in the main settings.", type:"select", options:[{content:"GOOD/CHEAP (currently: gpt-4o-mini)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4o)", value:"great"}, ...broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => ({value:m.name, content:m.shortLabel}))], defaultValue: defaultValues.modelName || "good" },
           maxTokensPerMessage: { hidden:true, label: "📏 Max tokens per message:", infoTooltip:"This can be used to limit the length of the AI's responses. A 'token' is basically a word - 500 tokens is about 400 words in most tokenizers. Leave this blank to allow unlimited tokens to be generated per message. Note that you can also control the length of the AI's responses in the reminder message by saying something like 'Your response should be at most 3 sentences' or whatever.", type:"textLine", defaultValue:defaultValues.maxTokensPerMessage || "" },
           fitMessagesInContextMethod: { hidden:true, label: "Method for fitting messages within model's context limit.", type:"select", options:[{value:"dropOld", content:"drop oldest messages"}, {value:"summarizeOld", content:"summarize oldest messages"}], defaultValue: defaultValues.fitMessagesInContextMethod ?? "summarizeOld" },
           textEmbeddingModelName: { hidden:true, label: "Text embedding model:", infoTooltip:"Yep, there's currently only one option for this. Will add more in the future. It's what converts each memory/lore entry (text) into a bunch of numbers that can be efficiently used for search/similarity/lookup.", type:"select", options:[...broadlyAvailableModels.filter(m => m.type === "text-embedding").map(m => ({value:m.name, content:m.name}))], defaultValue: defaultValues.textEmbeddingModelName ?? "text-embedding-ada-002" },
@@ -3089,13 +3107,16 @@
         messageObj = structuredClone(messageObj);
         delete messageObj.character; // just in case I'm sloppy somewhere
 
-        if(messageObj.order === undefined) {
-          let messages = await db.messages.where({threadId:messageObj.threadId}).toArray();
-          messages.sort((a,b) => a.order - b.order);
-          messageObj.order = messages.length > 0 ? messages.at(-1).order + 1 : 0;
-        }
-
-        let id = await db.messages.add(messageObj);
+        // compute `order` and add the message within a single transaction so concurrent writes
+        // (e.g. from custom code) can't produce duplicate order values
+        let id = await db.transaction("rw", db.messages, async () => {
+          if(messageObj.order === undefined) {
+            let messages = await db.messages.where({threadId:messageObj.threadId}).toArray();
+            messages.sort((a,b) => a.order - b.order);
+            messageObj.order = messages.length > 0 ? messages.at(-1).order + 1 : 0;
+          }
+          return await db.messages.add(messageObj);
+        });
         // update the thread's lastMessageTime.
         await db.threads.update(messageObj.threadId, { lastMessageTime: messageObj.creationTime });
         
@@ -3153,11 +3174,8 @@
         let aiCharacter = await db.characters.get(characterId);
 
         let modelName = aiCharacter.modelName;
-        if(modelName === "good") modelName = "gpt-3.5-turbo";
-        if(modelName === "great") {
-          if(userModelCapabilities["gpt-4"]?.canRun) modelName = "gpt-4";
-          else modelName = Date.now() < new Date("2024-01-04").getTime() ? "text-davinci-003" : "gpt-3.5-turbo-instruct";
-        }
+        if(modelName === "good") modelName = "gpt-4o-mini";
+        if(modelName === "great") modelName = "gpt-4o";
 
         // get highest bookId value:
         let loreBookId = (await db.lore.orderBy("bookId").last() ?? {bookId:-1}).bookId;
@@ -3222,11 +3240,15 @@
             // the server has correct CORS headers, so we don't need the proxy:
             downloadUrl = url;
           } else {
-            // code for this CORS proxy server is here: https://replit.com/@joe64/opencharacters-cors-proxy
-            // EDIT: Moved to Glitch since Replit raised prices to an absurd $6/month for a 0.25 vCPU machine in Jan 2024 (no more "Always On" machines - only "Deployments" now).
-            downloadUrl = "https://opencharacters-cors-proxy.glitch.me/?url=" + encodeURIComponent(url);
+            downloadUrl = corsProxiedUrl(url);
           }
-          let text = await fetch(downloadUrl).then(r => r.text());
+          // lore downloads are safe, read-only GETs, so try a direct fetch first and only fall back to the proxy
+          let text;
+          if(downloadUrl === url) {
+            text = await fetch(downloadUrl).then(r => r.text());
+          } else {
+            text = await fetch(url).then(r => r.ok ? r.text() : Promise.reject(new Error("direct fetch failed"))).catch(() => fetch(downloadUrl).then(r => r.text()));
+          }
           let entryTextArr = text.replace(/\r/g, "").split(/\n{2,}/).map(entry => entry.trim()).filter(entry => entry);
           
           let textHashes = await Promise.all(entryTextArr.map(e => sha256Text(e)));
@@ -3279,14 +3301,16 @@
 
         let modelObj = availableModels[modelName];
 
-        // TODO: get actual GPT-4 tokenizer
-        if(modelName.startsWith("gpt-3.5-turbo") || modelName.startsWith("text-davinci-003") || modelName.startsWith("gpt-4")) {
+        // We use the GPT-3 tokenizer as a (conservative - i.e. it tends to over-count for newer models) ESTIMATE
+        // for all OpenAI-hosted models. That's safe for context-budgeting purposes, since over-counting just means
+        // summarization kicks in slightly earlier than strictly necessary.
+        let isOpenAiHostedModel = modelName.startsWith("gpt-") || modelName.startsWith("chatgpt-") || modelName.startsWith("o1") || modelName.startsWith("o3") || modelName.startsWith("o4") || modelName.startsWith("text-") || modelObj?.endpointUrl?.startsWith("https://api.openai.com/");
+        if(isOpenAiHostedModel || !modelObj?.modelUrl) {
+          // also used as a graceful fallback estimate for custom models that don't declare a modelUrl (rather than throwing)
           if(!gpt3Tokenizer) gpt3Tokenizer = createGpt3Tokenizer();
           modelNameToTokenizerCache[modelName] = gpt3Tokenizer;
           return gpt3Tokenizer;
         }
-
-        if(!modelObj.modelUrl) throw new Error("Model doesn't have a modelUrl: "+modelName);
 
         if(!window.AutoTokenizer) {
           let { AutoTokenizer } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.0.0-alpha.0/dist/transformers.js");
@@ -4439,7 +4463,7 @@
             signals,
           });
           if(!rawResult) {
-            if(!signals.stop) alert("There was an error getting the memory search queries. Please try again.");
+            if(!signals.stop) showToast("There was an error getting the memory search queries. Please try again.", {type:"error"});
             return {};
           }
 
@@ -4794,7 +4818,8 @@
             }
             if(chunkI === 0 && res?.value.trim().startsWith("{")) { // errors don't start with 'data'
               let json = JSON.parse(res.value);
-              if(!signals.stop) alert("Error streaming message:\n\n"+JSON.stringify(json.error, null, 2));
+              console.error("Error streaming message:", json.error);
+              if(!signals.stop) showToast(`Error streaming message: ${json.error.message ?? JSON.stringify(json.error)}`, {type:"error"});
               break;
             } else {
               textBuffer += res.value;
@@ -4871,16 +4896,13 @@
               method: "POST",
               signal: abortSignal,
             }).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:chat:streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:chat:streaming > fetch:", e);
             });
             
             if(response) { // <-- e.g. request was aborted by user
               const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
               await handleStreamingResponse(reader).catch(e => {  // this appends chunks to the `result` variable
-                if(!signals.stop) alert("getBotReply > modelType:chat > handleStreamingResponse:\n\n"+e.stack);
+                if(!signals.stop) reportApiError("getBotReply > modelType:chat > handleStreamingResponse:", e);
               });
               apiTokenUsage.completion += await countTokens(result, modelName);
               apiTokenUsage.total += await countTokens(result, modelName);
@@ -4893,10 +4915,7 @@
               body: JSON.stringify(data),
               signal: abortSignal,
             }).then(r => r.json()).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:chat:non-streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:chat:non-streaming > fetch:", e);
             });
 
             if(json?.error) {
@@ -4944,16 +4963,13 @@
               method: "POST",
               signal: abortSignal,
             }).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:general:streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:general:streaming > fetch:", e);
             });
             
             if(response) { // <-- e.g. request was aborted by user
               const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
               await handleStreamingResponse(reader).catch(e => {  // this appends chunks to the `result` variable
-                if(!signals.stop) alert("getBotReply > modelType:chat > handleStreamingResponse:\n\n"+e.stack);
+                if(!signals.stop) reportApiError("getBotReply > modelType:general > handleStreamingResponse:", e);
               });
               apiTokenUsage.completion += await countTokens(result, modelName);
               apiTokenUsage.total += await countTokens(result, modelName);
@@ -4966,10 +4982,7 @@
               body: JSON.stringify(data),
               signal: abortSignal,
             }).then(r => r.json()).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:general:non-streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:general:non-streaming > fetch:", e);
             });
             
             if(json?.error) {
@@ -5094,10 +5107,7 @@
             body: JSON.stringify(data),
             signal: abortSignal,
           }).then(r => r.json()).catch(e => {
-            if(!signals.stop) {
-              if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-              else alert("getChatCompletion: "+e.stack);
-            }
+            if(!signals.stop) reportApiError("getChatCompletion:", e);
           });
           
           if(json?.error) {
@@ -5138,10 +5148,7 @@
             body: JSON.stringify(data),
             signal: abortSignal,
           }).then(r => r.json()).catch(e => {
-            if(!signals.stop) {
-              if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-              else alert("getChatCompletion > modelType:general > fetch: \n\n"+e.stack);
-            }
+            if(!signals.stop) reportApiError("getChatCompletion > modelType:general > fetch:", e);
           });
           
           if(json?.error) {
@@ -5401,7 +5408,13 @@
         
         if(!forceReply) {
           let lastMessage = messagesVisibleToAi.at(-1);
-          if(botIsCurrentlyReplying) return;
+          if(botIsCurrentlyReplying) {
+            // a reply was warranted but one is already in flight - let the user know instead of silently dropping it
+            if(lastMessage && lastMessage.expectsReply !== false && lastMessage.characterId !== characterId) {
+              showToast("The AI is still writing its reply - please wait for it to finish (or press the stop button).");
+            }
+            return;
+          }
           if(!lastMessage) return;
           if(lastMessage.expectsReply === false) {
             return; // there is a message, and bot isn't replying, but the message explicitely says not to reply
@@ -5752,7 +5765,7 @@
         });
 
         messageEl.querySelector(".recomputeWithAltModelButton").addEventListener("click", async function() {
-          let modelNameOverride = Date.now() < new Date("2024-01-04").getTime() ? "text-davinci-003" : "gpt-3.5-turbo-instruct";
+          let modelNameOverride = "gpt-3.5-turbo-instruct";
           await regenerateMessage(messageEl, {modelNameOverride});
         });
 
@@ -6645,7 +6658,7 @@
                 let regex = new RegExp(characterNameValidationPattern);
                 if(regex.test(arg)) {
                   thread.userCharacter.name = arg;
-                  alert(`Your name has been changed to "${arg}" for this particular thread.`);
+                  showToast(`Your name has been changed to "${arg}" for this particular thread.`);
                 } else {
                   alert(`Names must only contain letters, numbers, spaces, hyphens and underscores, and must be 64 characters or less. This is due to OpenAI API limitations.`);
                 }
@@ -6854,14 +6867,12 @@
                 return target.call(thisArg, ...argumentsList);
               }
 
-              // Note: This proxy server's code is public - you can see the code here: https://replit.com/@joe64/opencharacters-cors-proxy
-              // It's what allows characters to make arbitrary requests to resources on the internet.
-              // DO NOT use this URL directly in your code. The URL may change in future and your code will break.
+              // Note: The CORS proxy is what allows characters to make arbitrary requests to resources on the internet.
+              // DO NOT use the proxy URL directly in your code. The URL may change in future (it's user-configurable in advanced settings) and your code will break.
               // Just use 'fetch' as normal and this proxy will be used automatically.
               // Note: I was originally trying a normal fetch and then only falling back to this CORS proxy if it failed, but the problem with that is that this would hit the endpoint twice, which may have side effects, and the user might not want that.
               // I may eventually have to add manual "exemptions" to skip proxying certain URLs that don't need it - like huggingface models, for example, since we could start to become bandwidth limited.
-              // EDIT: Moved to Glitch since Replit raised prices to an absurd $6/month for a 0.25 vCPU machine in Jan 2024 (no more "Always On" machines - only "Deployments" now).
-              const proxiedUrl = "https://opencharacters-cors-proxy.glitch.me?url=" + encodeURIComponent(url);
+              const proxiedUrl = "${corsProxyUrl.replace(/\/+$/, "")}/?url=" + encodeURIComponent(url);
               try {
                 if(typeof argumentsList[0] === "object") {
                   argumentsList[0] = new Request(proxiedUrl, argumentsList[0]);
@@ -8294,11 +8305,13 @@
         let customModelConfigsOriginal = (await db.misc.get("customModelConfigs"))?.value || [];
         let showInlineReminderOriginal = (await db.misc.get("showInlineReminder"))?.value || "yes";
         let customPostPageLoadMainThreadCodeOriginal = (await db.misc.get("customPostPageLoadMainThreadCode"))?.value || "";
+        let corsProxyUrlOriginal = (await db.misc.get("corsProxyUrl"))?.value || "";
         const result = await prompt2({
           userName: {label: "Your name:", type: "textLine", defaultValue: userNameOriginal},
           userAvatarUrl: {label: "Your avatar URL:", type: "textLine", placeholder: "(optional)", defaultValue: userAvatarUrlOriginal},
           openAiApiKey: {label: "OpenAI API secret key (<a href='https://platform.openai.com/account/api-keys' target='_blank'>from here</a>):", type: "textLine", placeholder:"sk-...", defaultValue: openAiApiKeyOriginal},
           showInlineReminder: {hidden:true, label: "Show 'inline' reminder edit button:", type: "select", options:[{value:"yes"}, {value:"no"}], defaultValue: showInlineReminderOriginal},
+          corsProxyUrl: {hidden:true, label: `CORS proxy URL (leave blank for the default: ${defaultCorsProxyUrl}). Used for downloading lore files and for web requests made by character custom code. Refresh the page after changing this for it to take full effect.`, type: "textLine", placeholder: defaultCorsProxyUrl, defaultValue: corsProxyUrlOriginal},
           customModelConfigs: {hidden:true, cssText:"white-space:pre; font-family:monospace;", label: "Custom model configs (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-models.md' target='_blank'>follow this guide</a>):", type: "text", placeholder:`{name:"...", endpointUrl:"..."}\n{name:"...", endpointUrl:"...", apiKey:"..."}\n...`, defaultValue: customModelConfigsOriginal.map(o => JSON5.stringify(o)).join("\n")},
           customPostPageLoadMainThreadCode: {hidden:true, height:"fit-content", cssText:"white-space:pre; font-family:monospace;", label: "This code will be run on this page after page load. You can use it to mod the OpenCharacters UI, or to e.g. <a href='https://gist.github.com/josephrocca/a82216e2f2fdf54ad8dd79dbd4cfd625' target='_blank'>proxy all `fetch` requests</a>, or whatever. Note that there are no backwards-compatibility guarantees on the main thread UI, so your code may break eventually. <b>This code can access all your data</b> - make sure it's from a trustworthy source if you didn't write it yourself (maybe ask GPT-4 what it does if you don't know how to code and are weary). Refresh the page after saving for your code to take effect.", placeholder:"// add code here", type: "text", defaultValue: customPostPageLoadMainThreadCodeOriginal},
         }, {showHiddenInputsText: "show advanced settings"});
@@ -8354,7 +8367,9 @@
         await db.misc.put({key: "customModelConfigs", value: customModelConfigs});
         await db.misc.put({key: "showInlineReminder", value: showInlineReminder});
         await db.misc.put({key: "customPostPageLoadMainThreadCode", value: customPostPageLoadMainThreadCode});
-        
+        await db.misc.put({key: "corsProxyUrl", value: result.corsProxyUrl.trim()});
+        corsProxyUrl = result.corsProxyUrl.trim() || defaultCorsProxyUrl;
+
         await updateModelList();
 
         // update the user's name and avatar in the message feed:
