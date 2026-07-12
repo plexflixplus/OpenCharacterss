@@ -41,9 +41,14 @@ const http = require("http");
 const PORT = Number(process.env.PERCHANCE_BRIDGE_PORT || 8080);
 const GENERATOR = process.env.PERCHANCE_GENERATOR || "ai-text-plugin-tester";
 const GENERATOR_URL = `https://perchance.org/${GENERATOR}`;
+// Image generation drives a separate page that imports Perchance's text-to-image-plugin
+// (ai-character-chat exposes it as `root.textToImagePlugin`).
+const IMAGE_GENERATOR = process.env.PERCHANCE_IMAGE_GENERATOR || "ai-character-chat";
+const IMAGE_GENERATOR_URL = `https://perchance.org/${IMAGE_GENERATOR}`;
 const HEADLESS = String(process.env.PERCHANCE_HEADLESS || "").toLowerCase() === "true";
 const MAX_CONCURRENCY = Number(process.env.PERCHANCE_MAX_CONCURRENCY || 2);
 const GEN_TIMEOUT_MS = 120000;
+const IMG_TIMEOUT_MS = 180000;
 
 let chromium;
 try {
@@ -100,6 +105,8 @@ async function startBrowser() {
     await genFrame.evaluate(() => {
       try { window.root.ai({ preload: true }); } catch (e) {}
     }).catch(() => {});
+    // Turnstile often needs extra time after preload before the first generation succeeds.
+    await page.waitForTimeout(15000);
 
     browserUp = true;
     console.log("[bridge] browser ready; generator frame located");
@@ -115,9 +122,111 @@ async function stopBrowser() {
   browserUp = false;
   genFrame = null;
   page = null;
+  imagePage = null;
+  imageFrame = null;
   context = null;
   try { if (browser) await browser.close(); } catch (e) {}
   browser = null;
+}
+
+// ---- image generation page (text-to-image-plugin host) ----------------------
+
+let imagePage = null;
+let imageFrame = null;
+let imagePageStarting = false;
+let lastImageVerifiedAt = 0;
+
+async function findImageFrame() {
+  if (!imagePage) return null;
+  const frames = imagePage.frames();
+  return (
+    frames.find((f) => /\.perchance\.org/.test(f.url()) && f.url().includes(IMAGE_GENERATOR)) || null
+  );
+}
+
+async function ensureImageReady() {
+  if (!browserUp || !browser) await startBrowser();
+  if (!browser || !context) return false;
+  if (imagePageStarting) {
+    // another request is already booting the page - wait for it
+    for (let i = 0; i < 60 && imagePageStarting; i++) await new Promise((r) => setTimeout(r, 1000));
+  }
+  if (!imagePage || imagePage.isClosed() || !(await findImageFrame())) {
+    imagePageStarting = true;
+    try {
+      if (imagePage && !imagePage.isClosed()) { try { await imagePage.close(); } catch (e) {} }
+      console.log(`[bridge] loading image generator page -> ${IMAGE_GENERATOR_URL}`);
+      imagePage = await context.newPage();
+      await imagePage.goto(IMAGE_GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+      // give the generator's sandboxed iframe time to boot and the plugin to init:
+      await imagePage.waitForTimeout(10000);
+    } catch (e) {
+      console.error("[bridge] image generator page failed to load:", e.message);
+    } finally {
+      imagePageStarting = false;
+    }
+  }
+  imageFrame = await findImageFrame();
+  if (imageFrame) {
+    // wait until the plugin function is actually available on the frame's root
+    try {
+      for (let i = 0; i < 30; i++) {
+        const ready = await imageFrame.evaluate(() => !!(window.root && window.root.textToImagePlugin)).catch(() => false);
+        if (ready) return true;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    } catch (e) {}
+  }
+  return false;
+}
+
+async function generateImage(options) {
+  const ok = await ensureImageReady();
+  if (!ok) throw new Error("perchance image generator is not ready");
+
+  // The plugin's iframe only starts generating when it's actually rendered (IntersectionObserver),
+  // and background tabs don't render - so the image page must be the active tab while generating.
+  try { await imagePage.bringToFront(); } catch (e) {}
+  console.log(`[bridge] image generation started: ${String(options.prompt).slice(0, 80)}...`);
+
+  const result = await Promise.race([
+    imageFrame.evaluate(
+      async (opts) => {
+        const resultObj = window.root.textToImagePlugin({
+          prompt: opts.prompt,
+          negativePrompt: opts.negativePrompt || undefined,
+          seed: opts.seed === undefined ? undefined : opts.seed,
+          guidanceScale: opts.guidanceScale === undefined ? undefined : opts.guidanceScale,
+          resolution: opts.resolution || undefined,
+          style: "z-index:10000; opacity:0.4; position:fixed; top:0.5rem; right:0.5rem; transform-origin:top right; transform:scale(0.3);",
+        });
+        // the plugin's iframe must be on the page in case captcha verification is needed
+        let iframeEl = null;
+        if (resultObj.iframeHtml) {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = resultObj.iframeHtml;
+          iframeEl = tmp.firstElementChild;
+          document.body.append(iframeEl);
+        }
+        try {
+          const data = await resultObj.onFinishPromise;
+          return { dataUrl: data.dataUrl };
+        } finally {
+          if (iframeEl) iframeEl.remove();
+        }
+      },
+      options
+    ),
+    new Promise((_, rej) => setTimeout(() => rej(new Error("image generation timed out")), IMG_TIMEOUT_MS)),
+  ]);
+
+  // give the text-gen page its rendering back (Turnstile checks need a visible tab)
+  try { if (page && !page.isClosed()) await page.bringToFront(); } catch (e) {}
+
+  if (!result || !result.dataUrl) throw new Error("perchance returned no image (likely verification failure)");
+  console.log("[bridge] image generation finished");
+  lastImageVerifiedAt = Date.now();
+  return result.dataUrl;
 }
 
 async function ensureReady() {
@@ -279,6 +388,34 @@ async function handleChatCompletion(req, res) {
   }
 }
 
+async function handleImageGeneration(req, res) {
+  if (activeGenerations >= MAX_CONCURRENCY) {
+    return sendJson(res, 429, { error: { message: "bridge busy - too many concurrent generations", type: "rate_limit" } });
+  }
+  let body;
+  try { body = JSON.parse(await readBody(req)); }
+  catch (e) { return sendJson(res, 400, { error: { message: "invalid JSON body" } }); }
+
+  const prompt = typeof body.prompt === "string" ? body.prompt : "";
+  if (!prompt.trim()) return sendJson(res, 400, { error: { message: "prompt required" } });
+
+  activeGenerations++;
+  try {
+    const dataUrl = await generateImage({
+      prompt,
+      negativePrompt: typeof body.negativePrompt === "string" ? body.negativePrompt : undefined,
+      seed: body.seed,
+      guidanceScale: body.guidanceScale,
+      resolution: body.resolution,
+    });
+    sendJson(res, 200, { ok: true, dataUrl });
+  } catch (e) {
+    if (!res.headersSent) sendJson(res, 503, { ok: false, error: { message: String(e.message), type: "bridge_unavailable" } });
+  } finally {
+    activeGenerations--;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") {
@@ -301,11 +438,17 @@ const server = http.createServer(async (req, res) => {
       verifiedRecently,
       lastVerifiedAt,
       generator: GENERATOR,
+      imageGenerator: IMAGE_GENERATOR,
+      imageReady: !!(imagePage && !imagePage.isClosed()),
+      lastImageVerifiedAt,
       activeGenerations,
     });
   }
   if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
     return handleChatCompletion(req, res);
+  }
+  if (url.pathname === "/v1/images/generations" && req.method === "POST") {
+    return handleImageGeneration(req, res);
   }
   sendJson(res, 404, { error: { message: "not found" } });
 });
@@ -320,14 +463,17 @@ server.listen(PORT, () => {
 
 (async function boot() {
   await startBrowser();
-  // warm-up verification attempt (best-effort):
-  try {
-    await generate({ messages: [{ role: "user", content: "Say hi in one word." }] });
-    console.log("[bridge] warm-up generation succeeded - Turnstile verification OK");
-  } catch (e) {
-    console.warn("[bridge] warm-up generation failed:", e.message);
-    console.warn("[bridge] (this is expected on datacenter IPs where Cloudflare Turnstile refuses to verify)");
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      await generate({ messages: [{ role: "user", content: "Say hi in one word." }] });
+      console.log("[bridge] warm-up generation succeeded - Turnstile verification OK");
+      return;
+    } catch (e) {
+      console.warn(`[bridge] warm-up attempt ${attempt}/4 failed:`, e.message);
+      if (attempt < 4) await new Promise((r) => setTimeout(r, 15000));
+    }
   }
+  console.warn("[bridge] Perchance is not verified yet. The bridge will keep retrying in the background.");
 })();
 
 // keep the browser session healthy: re-verify / relaunch if it goes stale

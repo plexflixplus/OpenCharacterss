@@ -448,12 +448,34 @@ export function textToSpeech({text, voiceName}) {
 }
 
 
+const sha256Cache = new Map();
+
 export async function sha256Text(text) {
-  const msgUint8 = new TextEncoder().encode(text);                          
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);          
-  const hashArray = Array.from(new Uint8Array(hashBuffer));                    
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+  const cached = sha256Cache.get(text);
+  if (cached) return cached;
+
+  let hash;
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    try {
+      const msgUint8 = new TextEncoder().encode(text);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+      hash = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    } catch (e) {
+      // fall through to server-side digest (needed on HTTP non-localhost origins)
+    }
+  }
+  if (!hash) {
+    const response = await fetch("/api/sha256", {
+      method: "POST",
+      headers: { "content-type": "text/plain; charset=utf-8" },
+      body: text,
+    });
+    if (!response.ok) throw new Error("sha256 request failed: HTTP " + response.status);
+    hash = (await response.json()).hash;
+  }
+
+  sha256Cache.set(text, hash);
+  return hash;
 }
 
 

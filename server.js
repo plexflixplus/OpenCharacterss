@@ -14,9 +14,11 @@
 //   is intentionally NEVER sent to or stored on the server.
 
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "server-data");
@@ -136,7 +138,25 @@ async function handleApi(req, res, pathname) {
 
   // ---- lightweight health/capability probe (used by the client to detect the server) ----
   if (pathname === "/api/health") {
-    sendJson(res, 200, { ok: true, providers: ["pollinations"], proxy: true });
+    sendJson(res, 200, { ok: true, providers: ["pollinations"], proxy: true, sha256: true });
+    return true;
+  }
+
+  // ---- SHA-256 helper for browsers on HTTP (crypto.subtle is unavailable outside secure contexts) ----
+  if (pathname === "/api/sha256") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { error: "POST only" });
+      return true;
+    }
+    let body;
+    try {
+      body = await readBody(req);
+    } catch (e) {
+      sendJson(res, 400, { error: "could not read body" });
+      return true;
+    }
+    const hash = crypto.createHash("sha256").update(body).digest("hex");
+    sendJson(res, 200, { hash });
     return true;
   }
 
@@ -255,8 +275,8 @@ function proxyToPerchanceBridge(req, res, pathname) {
       if (!res.headersSent) sendJson(res, 503, { ok: false, error: "perchance bridge unavailable: " + e.message });
       resolve();
     });
-    // 3 minutes: perchance generations (esp. with Turnstile retries) can be slow
-    proxyReq.setTimeout(180000, () => proxyReq.destroy(new Error("bridge timeout")));
+    // 4 minutes: perchance generations (esp. images, or with Turnstile retries) can be slow
+    proxyReq.setTimeout(240000, () => proxyReq.destroy(new Error("bridge timeout")));
     req.pipe(proxyReq);
   });
 }
@@ -365,8 +385,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`OpenCharacters server running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`OpenCharacters server running at http://${HOST}:${PORT}`);
   console.log(`Chat data is stored server-side in ${DATA_FILE}`);
   console.log(`Perchance bridge proxied at /api/perchance/* -> ${PERCHANCE_BRIDGE_ORIGIN}`);
   console.log(`Web-page fetch helper available at /api/fetch-page?url=...`);

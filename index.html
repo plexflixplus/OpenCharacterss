@@ -22,71 +22,110 @@
   <body>
     <style>
       :root, :root.light {
-        --background: #e8e8e8;
-        --button-bg: #c8c8c8;
-        --button-bg-hover: #b4b4b4;
-        --text-color: black;
-        --textarea-bg: #f1f1f1;
-        --selected-thread-bg: lightgray;
-        --border-color: #c8c8c8;
-        --border-radius: 3px;
-        --avatar-bg: lightgrey;
-        --notification-bg-color: #005ac2;
-        --button-border-color: #b4b4b4;
+        --background: #f4f5f8;
+        --surface: #ffffff;
+        --sidebar-bg: #eceef3;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --accent-soft: rgba(99, 102, 241, 0.12);
+        --hover-bg: rgba(16, 18, 27, 0.05);
+        --button-bg: #ffffff;
+        --button-bg-hover: #eef0f5;
+        --text-color: #1a1d27;
+        --text-muted: #6b7280;
+        --textarea-bg: #ffffff;
+        --selected-thread-bg: rgba(99, 102, 241, 0.10);
+        --border-color: #dcdfe8;
+        --border-radius: 12px;
+        --border-radius-small: 8px;
+        --avatar-bg: #dcdfe8;
+        --notification-bg-color: #4f46e5;
+        --button-border-color: #d3d6e0;
         --button-font-size: 0.825rem;
-        --code-bg: rgb(35 35 35);
-        --code-text: rgb(232, 232, 232);
-        --input-border: lightgrey;
-        --link-color: #0044cc;
+        --code-bg: #22242e;
+        --code-text: #e8e8e8;
+        --input-border: #d3d6e0;
+        --link-color: #4f46e5;
         --error-bg: #b3261e;
-        --focus-outline: #005ac2;
+        --focus-outline: #6366f1;
+        --shadow: 0 1px 2px rgba(16, 18, 27, 0.06), 0 3px 12px rgba(16, 18, 27, 0.05);
+        --shadow-lift: 0 4px 8px rgba(16, 18, 27, 0.08), 0 8px 24px rgba(16, 18, 27, 0.08);
+        --bubble-ai-bg: rgba(255, 255, 255, 0.92);
+        --bubble-user-bg: rgba(99, 102, 241, 0.10);
+        --bubble-user-border: rgba(99, 102, 241, 0.28);
       }
 
 
       /* Detect browser dark mode and change variables */
       @media (prefers-color-scheme: dark) {
         :root:not(.light) {
-          --background: #151515;
-          --button-bg: #333;
-          --button-bg-hover: #444;
-          --text-color: white;
-          --textarea-bg: #333;
-          --selected-thread-bg: #444;
-          --border-color: #333;
-          --avatar-bg: #333;
-          --button-border-color: #515151;
-          --code-bg: #262626;
+          --background: #151823;
+          --surface: #1e2230;
+          --sidebar-bg: #0f1117;
+          --accent: #6366f1;
+          --accent-hover: #7c7ff5;
+          --accent-soft: rgba(99, 102, 241, 0.18);
+          --hover-bg: rgba(255, 255, 255, 0.045);
+          --button-bg: #232838;
+          --button-bg-hover: #2b3145;
+          --text-color: #e7e9f0;
+          --text-muted: #8a90a5;
+          --textarea-bg: #1b1f2c;
+          --selected-thread-bg: rgba(99, 102, 241, 0.16);
+          --border-color: #272c3d;
+          --avatar-bg: #272c3d;
+          --button-border-color: #333950;
+          --code-bg: #12141d;
           --code-text: #e8e8e8;
-          --input-border: #515151;
-          --link-color: #7ab4ff;
+          --input-border: #333950;
+          --link-color: #8b8ff8;
           --error-bg: #8c1d18;
-          --focus-outline: #7ab4ff;
+          --focus-outline: #8b8ff8;
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 3px 12px rgba(0, 0, 0, 0.18);
+          --shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.25);
+          --bubble-ai-bg: rgba(30, 34, 48, 0.92);
+          --bubble-user-bg: rgba(99, 102, 241, 0.18);
+          --bubble-user-border: rgba(99, 102, 241, 0.38);
         }
       }
       /* Manual dark theme override (via the theme setting) - keep in sync with the media query block above */
       :root.dark {
-        --background: #151515;
-        --button-bg: #333;
-        --button-bg-hover: #444;
-        --text-color: white;
-        --textarea-bg: #333;
-        --selected-thread-bg: #444;
-        --border-color: #333;
-        --avatar-bg: #333;
-        --button-border-color: #515151;
-        --code-bg: #262626;
+        --background: #151823;
+        --surface: #1e2230;
+        --sidebar-bg: #0f1117;
+        --accent: #6366f1;
+        --accent-hover: #7c7ff5;
+        --accent-soft: rgba(99, 102, 241, 0.18);
+        --hover-bg: rgba(255, 255, 255, 0.045);
+        --button-bg: #232838;
+        --button-bg-hover: #2b3145;
+        --text-color: #e7e9f0;
+        --text-muted: #8a90a5;
+        --textarea-bg: #1b1f2c;
+        --selected-thread-bg: rgba(99, 102, 241, 0.16);
+        --border-color: #272c3d;
+        --avatar-bg: #272c3d;
+        --button-border-color: #333950;
+        --code-bg: #12141d;
         --code-text: #e8e8e8;
-        --input-border: #515151;
-        --link-color: #7ab4ff;
+        --input-border: #333950;
+        --link-color: #8b8ff8;
         --error-bg: #8c1d18;
-        --focus-outline: #7ab4ff;
+        --focus-outline: #8b8ff8;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 3px 12px rgba(0, 0, 0, 0.18);
+        --shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.25);
+        --bubble-ai-bg: rgba(30, 34, 48, 0.92);
+        --bubble-user-bg: rgba(99, 102, 241, 0.18);
+        --bubble-user-border: rgba(99, 102, 241, 0.38);
       }
 
       body, html {
         margin:0;
         background: var(--background);
         color: var(--text-color);
-        font-family: sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.45;
       }
       body * {
         box-sizing:border-box;
@@ -127,14 +166,18 @@
 
       button {
         background: var(--button-bg);
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-small);
         cursor:pointer;
-        padding: 0.125rem;
+        padding: 0.25rem 0.5rem;
         border: 1px solid var(--button-border-color);
         font-size: var(--button-font-size);
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
       }
       button:hover {
         background: var(--button-bg-hover);
+      }
+      button:active {
+        transform: scale(0.98);
       }
       button:disabled {
         cursor: not-allowed;
@@ -144,19 +187,57 @@
         background: var(--textarea-bg);
         border: 1px solid var(--button-border-color);
         border-radius: var(--border-radius);
+        color: var(--text-color);
+        transition: border-color 0.15s ease;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent);
       }
 
       input[type="text"], select {
         background: var(--textarea-bg);
         border: 1px solid var(--button-border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-small);
+        color: var(--text-color);
+        transition: border-color 0.15s ease;
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
       }
 
+      #leftColumn {
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--border-color);
+      }
+      #newThreadButton {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        border-radius: var(--border-radius-small);
+        box-shadow: var(--shadow);
+      }
+      #newThreadButton:hover {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      }
+      #threadSearchInput {
+        border-radius: var(--border-radius-small);
+        padding: 0.375rem 0.625rem;
+      }
       #appOptions .appOptionButton {
         width:100%;
         cursor:pointer;
         margin-top:0.5rem;
         min-height: 2rem;
+        color: var(--text-muted);
+        background: transparent;
+        border-color: transparent;
+      }
+      #appOptions .appOptionButton:hover {
+        background: var(--hover-bg);
+        color: var(--text-color);
       }
       #chatThreads {
         flex-grow:1;
@@ -167,16 +248,20 @@
         padding-bottom:2rem;
       }
       #chatThreads .thread, #chatThreads .threadFolder {
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-small);
         display:flex;
         padding:0.5rem;
         cursor:pointer;
-        border: 1px solid var(--border-color);
+        border: 1px solid transparent;
         position: relative;
         user-select:none;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      #chatThreads .thread:hover, #chatThreads .threadFolder:hover {
+        background: var(--hover-bg);
       }
       #chatThreads .thread, #chatThreads .threadFolder {
-        margin-top: 0.5rem;
+        margin-top: 0.25rem;
       }
       #chatThreads .thread:first-child, #chatThreads .threadFolder:first-child {
         margin-top: 0;
@@ -232,15 +317,40 @@
       }
       #chatThreads .thread.selected {
         background-color: var(--selected-thread-bg);
+        border-color: var(--bubble-user-border);
+      }
+      #chatThreads .thread.selected::before {
+        content: "";
+        position: absolute;
+        left: -0.5rem;
+        top: 20%;
+        bottom: 20%;
+        width: 3px;
+        border-radius: 3px;
+        background: var(--accent);
       }
       #chatThreads .thread .info {
         max-width: 100%;
       }
+      #chatThreads .thread .characterName {
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #chatThreads .thread .characterIdTag {
+        opacity: 0.45;
+        font-weight: 400;
+        font-size: 0.7rem;
+      }
       #chatThreads .thread .nameWrapper {
         overflow: hidden;
         white-space: nowrap;
-        max-width: 150px;
+        max-width: 160px;
         display: flex;
+        font-size: 0.75rem;
+        color: var(--text-muted);
       }
       #chatThreads .thread .name {
         /* truncate long thread names */
@@ -249,10 +359,33 @@
         white-space: nowrap;
         flex-grow: 1;
       }
-      #chatThreads .thread .avatar, #characterSelection  .character .avatar {
+      #chatThreads .thread .threadMeta {
+        display: none;
+        justify-content: space-between;
+        gap: 0.375rem;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        margin-top: 0.125rem;
+        padding-right: 0.25rem;
+      }
+      #chatThreads .thread:hover .threadMeta, #chatThreads .thread.selected .threadMeta {
+        display: flex;
+      }
+      #chatThreads .thread .threadActions {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-size: 0.65rem;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      #chatThreads .thread:hover .threadActions, body.isMobile #chatThreads .thread.selected .threadActions {
+        opacity: 1;
+      }
+      #chatThreads .thread .avatar {
         width:50px;
         height:50px;
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-small);
         min-width:50px;
         background-position: center;
         background-size: cover;
@@ -262,12 +395,13 @@
       #messageFeed .message .avatar {
         width: 50px;
         height: 50px;
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-small);
         min-width: 50px;
         background-position: center;
         background-size: cover;
         background-repeat: no-repeat;
         background-color: var(--avatar-bg);
+        box-shadow: var(--shadow);
       }
       #chatThreads .characterEditButton {
         font-size: 0.65rem;
@@ -325,8 +459,35 @@
       }
 
       #messageFeed .message {
-        margin-top:0.5rem;
-        margin-bottom:0.5rem;
+        margin-top:0.75rem;
+        margin-bottom:0.75rem;
+        max-width: 920px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* message bubbles: elevated card for the text content, tinted for the user */
+      #messageFeed .message .messageWrap > div:last-child {
+        background: var(--bubble-ai-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        border-top-left-radius: 4px;
+        padding: 0.625rem 0.875rem !important;
+        margin-left: 0.625rem;
+        box-shadow: var(--shadow);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      #messageFeed .message[data-character-id="-1"] .messageWrap > div:last-child {
+        background: var(--bubble-user-bg);
+        border-color: var(--bubble-user-border);
+      }
+      #messageFeed .message .info .characterName {
+        color: var(--text-muted);
+        font-weight: 600 !important;
+      }
+      #messageFeed .message[data-character-id="-1"] .info .characterName {
+        color: var(--accent-hover);
       }
 
       #messageFeed .message .bottomButtons {
@@ -376,7 +537,7 @@
       }
 
       #messageFeed > *:first-child {
-        margin-top: 3rem;
+        margin-top: 4.25rem;
       }
 
       #characterFoldersList {
@@ -393,15 +554,180 @@
         padding:0.5rem;
         cursor:pointer;
         user-select:none;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+      #characterFoldersList .characterFolder:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lift);
       }
 
+      /* ---- gallery hero + section titles ---- */
+      .galleryHero {
+        text-align: center;
+        padding: 3.5rem 1.5rem 2rem;
+      }
+      .galleryHero h1 {
+        margin: 0;
+        font-size: 1.9rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        background: linear-gradient(120deg, var(--text-color), var(--accent-hover));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .galleryHero p {
+        margin: 0.5rem 0 1.25rem;
+        color: var(--text-muted);
+      }
+      .galleryHeroActions {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .galleryHeroActions button {
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        font-size: 0.875rem;
+      }
+      .heroPrimaryButton {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        box-shadow: var(--shadow);
+      }
+      .heroPrimaryButton:hover {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      }
+      .gallerySectionTitle {
+        text-align: center;
+        margin-top: 4rem;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      /* ---- character discovery cards (portrait, cover-art style) ---- */
       #characterSelection .character {
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: 16px;
         width: 100%;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
       }
-      #characterSelection .character .info .buttons {
+      #characterSelection .character:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lift);
+        border-color: var(--bubble-user-border);
+      }
+      #characterSelection .character .avatar {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 0.85;
+        background-position: center top;
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-color: var(--avatar-bg);
+      }
+      #characterSelection .character .avatar .avatarFallback {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: linear-gradient(160deg, var(--accent-soft), transparent 70%);
+      }
+      #characterSelection .character .avatar::after {
+        content: "";
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        height: 45%;
+        background: linear-gradient(to top, var(--surface), transparent);
+        pointer-events: none;
+      }
+      #characterSelection .character .buttons {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: flex;
+        gap: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        z-index: 2;
+      }
+      #characterSelection .character:hover .buttons,
+      body.isMobile #characterSelection .character .buttons {
+        opacity: 1;
+      }
+      #characterSelection .character .buttons button {
+        border: none;
+        background: rgba(15, 17, 23, 0.6);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        border-radius: 8px;
+        padding: 0.25rem 0.375rem;
+        font-size: 0.75rem;
+      }
+      #characterSelection .character .buttons button:hover {
+        background: rgba(15, 17, 23, 0.85);
+      }
+      #characterSelection .character .info {
+        padding: 0.25rem 0.625rem 0.625rem;
+        margin-top: -1rem;
+        position: relative;
+        z-index: 1;
+      }
+      #characterSelection .character .info .name {
+        font-weight: 700;
+        font-size: 0.9rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #characterSelection .character .info .name .characterIdTag {
+        font-weight: 400;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      #characterSelection .character .info .tagline {
+        font-size: 0.78rem;
+        color: var(--text-muted);
         margin-top: 0.25rem;
+        min-height: 2.3em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      #characterSelection .character .info .startChatHint {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--accent-hover);
+        opacity: 0;
+        transform: translateX(-4px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+      #characterSelection .character:hover .startChatHint {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      #threadOptionsPopup {
+        box-shadow: var(--shadow-lift);
       }
       #characterSelection .character .info .buttons button {
         font-size: 0.7rem;
@@ -409,9 +735,17 @@
       }
       #characterList, #starterCharacterList {
         display: grid;
-        grid-template-columns: repeat(auto-fill, 280px);
-        grid-gap: 0.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        grid-gap: 0.75rem;
         justify-content: center;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+      #characterFoldersList {
+        max-width: 1200px;
+        margin: 0 auto 0.5rem;
+        padding: 0 1.5rem;
       }
       #characterFoldersList .characterFolder {
         display: flex;
@@ -420,6 +754,145 @@
       }
       #characterSelection .character {
         user-select:none;
+      }
+
+      /* composer: unified rounded card with icon buttons */
+      #inputWrapper {
+        max-width: 920px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      #composerCard {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.375rem;
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 0.5rem;
+        box-shadow: var(--shadow);
+        transition: border-color 0.15s ease;
+      }
+      #composerCard:focus-within {
+        border-color: var(--accent);
+      }
+      #messageInput {
+        flex-grow: 1;
+        border: none;
+        background: transparent;
+        padding: 0.5rem 0.625rem;
+        line-height: 1.45;
+        font-size: 100%;
+        resize: none;
+        min-height: 3.25rem;
+        max-height: 40vh;
+      }
+      #messageInput:focus {
+        outline: none;
+        border: none;
+      }
+      #composerButtons {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+      #sendButton {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        width: 2.5rem;
+        height: 2.5rem;
+        min-width: 2.5rem;
+        border-radius: 50%;
+        box-shadow: var(--shadow);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #sendButton:hover {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      }
+      #threadOptionsButton {
+        color: var(--text-muted);
+        background: transparent;
+        border-color: transparent;
+        width: 2.5rem;
+        height: 2.5rem;
+        min-width: 2.5rem;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      #threadOptionsButton:hover {
+        color: var(--text-color);
+        background: var(--hover-bg);
+      }
+
+      /* chat header: glassy full-width bar with character identity */
+      #messageFeedHeaderBar {
+        background: color-mix(in srgb, var(--background) 78%, transparent);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.5rem 0.75rem;
+      }
+      #chatHeaderCharacterInfo {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        min-width: 0;
+      }
+      #chatHeaderAvatar {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        border-radius: 50%;
+        background-position: center;
+        background-size: cover;
+        background-color: var(--avatar-bg);
+        box-shadow: var(--shadow);
+      }
+      #chatHeaderText {
+        min-width: 0;
+      }
+      #chatHeaderName {
+        font-weight: 700;
+        font-size: 0.95rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #chatHeaderThreadName {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #chatHeaderModelPill {
+        background: var(--button-bg);
+        border: 1px solid var(--button-border-color);
+        border-radius: 999px;
+        padding: 0.25rem 0.625rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        align-items: center;
+      }
+      #threadModelSelector {
+        border: none;
+        background: transparent;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+      #threadModelSelector:focus {
+        outline: none;
       }
 
       #customCodeIframeHorizontalResizeBar {
@@ -490,6 +963,16 @@
         #chatThreads .thread .favStar, #chatThreads .thread .changeFolderPath {
           display: inline;
         }
+        #chatThreads .thread .threadActions {
+          opacity: 1;
+        }
+        #characterSelection .character .buttons {
+          opacity: 1;
+        }
+        #characterSelection .character .info .startChatHint {
+          opacity: 1;
+          transform: none;
+        }
       }
 
       /* comfortable touch targets for coarse pointers */
@@ -518,8 +1001,8 @@
       /* typing indicator from https://codepen.io/arthak/pen/rmqvgo */
       .tiblock { align-items: center; display: flex; height: 17px; }
       .ticontainer{ display: inline-block; }
-      .ticontainer .tidot { background-color: #90949c;  }
-      .tidot { animation: mercuryTypingAnimation 1.5s infinite ease-in-out; border-radius: 2px; display: inline-block; height: 4px; margin-right: 2px; width: 4px; }
+      .ticontainer .tidot { background-color: var(--accent); }
+      .tidot { animation: mercuryTypingAnimation 1.5s infinite ease-in-out; border-radius: 50%; display: inline-block; height: 5px; margin-right: 3px; width: 5px; }
       @keyframes mercuryTypingAnimation{ 0%{ -webkit-transform:translateY(0px); transform:translateY(0px); } 28% { transform:translateY(-5px); } 44%{ transform:translateY(0px); } } .tidot:nth-child(1){ animation-delay:200ms; } .tidot:nth-child(2){ animation-delay:300ms; } .tidot:nth-child(3){ animation-delay:400ms; }
     </style>
 
@@ -560,28 +1043,36 @@
         <div id="middleColumnShadowOverlay" style="display:none; position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5); z-index:20;"></div>
         <div id="characterSelection" class="middleColumnScreen" style="flex-grow:1; display:none; overflow: auto;">
           <button id="characterSelectionOpenLeftColumnButton" class="openLeftColumnButton" style="background: var(--button-bg);border-radius: var(--border-radius);border: 1px solid var(--button-border-color);padding: 0.25rem;width: 2rem;min-height: 2rem;margin-right: 0.5rem;position: absolute;top: 0.5rem;left: 0.5rem;">☰</button>
-          <div>
-            <h2 style="text-align:center;margin-bottom: 0.5rem;">Your Characters</h2>
-            <div style="margin-bottom: 0.5rem;display: flex;justify-content: center;">
-              <button id="newCharacterButton" style="padding: 0.25rem;">🆕 new character</button>
-              <button id="newCharacterFromWebPageButton" style="padding: 0.25rem; margin-left: 0.5rem;">🌐 from web page</button>
+          <div class="galleryHero">
+            <h1>Who do you want to talk to?</h1>
+            <p>Pick a character to start a conversation, or create your own.</p>
+            <div class="galleryHeroActions">
+              <button id="newCharacterButton" class="heroPrimaryButton">+ Create a character</button>
+              <button id="newCharacterFromWebPageButton">🌐 From a web page</button>
               <!-- <button id="newFolderCharacterButton" style="padding: 0.25rem; margin-left: 0.5rem;">📁 new folder</button> -->
             </div>
           </div>
           <div id="characterFoldersList" data-current-folder-path=""></div>
           <div id="characterList"></div>
-          <div><h2 style="text-align:center; margin-top:4rem;">Starter Characters</h2></div>
+          <h2 class="gallerySectionTitle">Starter characters</h2>
           <div id="starterCharacterList"></div>
           <br><br>
         </div>
         <div id="chatInterface" class="middleColumnScreen" style="display:flex; flex-grow:1; flex-direction:column; height:100%; position:relative;">
           <div id="customCodeChatInterfaceWrapper" style="display:none;"></div>
           <div id="builtInChatInterfaceWrapper">
-            <div id="messageFeedHeaderBar" style="display: flex; position:absolute;height: 2rem;right: 0;left: 0;margin: 0.5rem; z-index:30;">
-              <button id="messageFeedOpenLeftColumnButton" class="openLeftColumnButton" style="display:none; background: var(--button-bg);border-radius: var(--border-radius);border: 1px solid var(--button-border-color);padding: 0.25rem; min-width: 2rem; height: 100%; margin-right:0.5rem;">☰</button>
-              <div style="background: var(--button-bg); display:flex; height: 100%; border-radius: var(--border-radius);border: 1px solid var(--button-border-color);padding: 0.25rem;">
-                <div style="display: flex;align-items: center;font-size:var(--button-font-size);margin-right: 0.25rem;">model:</div>
-                <select id="threadModelSelector" style="max-width:130px;"></select>
+            <div id="messageFeedHeaderBar" style="display: flex; position:absolute; right: 0; left: 0; top: 0; z-index:30; align-items:center;">
+              <button id="messageFeedOpenLeftColumnButton" class="openLeftColumnButton" style="display:none; min-width: 2rem; height: 2rem; margin-right:0.5rem;">☰</button>
+              <div id="chatHeaderCharacterInfo">
+                <div id="chatHeaderAvatar"></div>
+                <div id="chatHeaderText">
+                  <div id="chatHeaderName"></div>
+                  <div id="chatHeaderThreadName"></div>
+                </div>
+              </div>
+              <div style="flex-grow:1;"></div>
+              <div id="chatHeaderModelPill">
+                <select id="threadModelSelector" style="max-width:160px;"></select>
               </div>
               <!-- <div id="threadSettingsButton" style="margin-left:0.5rem; cursor:pointer;   background: var(--button-bg); display:flex; height: 100%; border-radius: var(--border-radius);border: 1px solid var(--button-border-color);padding: 0.25rem;">
                 <div style="display: flex;align-items: center;justify-content:center;font-size:var(--button-font-size);min-width:1.5rem;">⚙️</div>
@@ -597,17 +1088,17 @@
               </div> -->
               <div id="userMessagesSentHistoryCtn"></div>
               <div id="shortcutButtonsCtn"></div>
-              <div style="display:flex;">
-                <textarea id="messageInput" style="flex-grow:1; min-height:4rem; font-size:100%;" title="commands:&#10;/ai - prompt a reply from ai&#10;/ai &lt;instruction&gt; - prompt reply with instruction&#10;/ai @CharName#123 &lt;instruction&gt; - prompt reply with another character (ID=123)&#10;/user &lt;instruction&gt; - generate a user reply&#10;/sys &lt;message&gt; - reply as system&#10;/sum - open summary editor&#10;/mem - open memory editor&#10;/lore - open lore editor&#10;/lore &lt;text&gt; - add a lore entry&#10;/name &lt;name&gt; - set your name for this thread&#10;/avatar &lt;url&gt; - set your avatar image for this thread&#10;/import - add chat messages in bulk&#10;&#10;• You can add '/ai &lt;instruction&gt;' as the final line in your normal messages to instruct AI for its reply.&#10;• Double-click this text box to show input history"></textarea>
-                <div style="display:flex; flex-direction:column; margin-left:0.25rem;">
-                  <button id="sendButton" style="min-width:80px; flex-grow:1;">send</button>
+              <div id="composerCard">
+                <textarea id="messageInput" placeholder="Send a message..." title="commands:&#10;/ai - prompt a reply from ai&#10;/ai &lt;instruction&gt; - prompt reply with instruction&#10;/ai @CharName#123 &lt;instruction&gt; - prompt reply with another character (ID=123)&#10;/user &lt;instruction&gt; - generate a user reply&#10;/sys &lt;message&gt; - reply as system&#10;/sum - open summary editor&#10;/mem - open memory editor&#10;/lore - open lore editor&#10;/lore &lt;text&gt; - add a lore entry&#10;/name &lt;name&gt; - set your name for this thread&#10;/avatar &lt;url&gt; - set your avatar image for this thread&#10;/import - add chat messages in bulk&#10;&#10;• You can add '/ai &lt;instruction&gt;' as the final line in your normal messages to instruct AI for its reply.&#10;• Double-click this text box to show input history"></textarea>
+                <div id="composerButtons">
                   <div style="position:relative;">
-                    <div id="threadOptionsPopup" style="position:absolute; display:none; padding:0.5rem; background:var(--background); border-radius:var(--border-radius); width:max-content; right:0; bottom:0; border:1px solid var(--border-color);">
+                    <div id="threadOptionsPopup" style="position:absolute; display:none; padding:0.5rem; background:var(--surface); border-radius:var(--border-radius); width:max-content; right:0; bottom:0; border:1px solid var(--border-color);">
                       <button id="addShortcutButton">✨ add shortcut</button>
                       <!-- <button id="replyLoopButton">➰ reply loop</button> -->
                     </div>
                   </div>
-                  <button id="threadOptionsButton" style="min-width:80px; margin-top:0.25rem;">options</button>
+                  <button id="threadOptionsButton" title="Chat options" aria-label="Chat options">⋯</button>
+                  <button id="sendButton" title="Send message" aria-label="Send message">➤</button>
                 </div>
               </div>
             </div>
@@ -628,7 +1119,7 @@
     <audio id="musicPlayer" style="display:none;"></audio>
 
     <script type="module">
-      import { $, $$, delay, showEl, hideEl, prompt2, createFloatingWindow, sanitizeHtml, textToSpeech, sha256Text, dedent, downloadTextOrBlob, createGpt3Tokenizer, cosineDistance, createLoadingModal, applyObjectOverrides, objectKeysAndTypesAreValid, addBackgroundToElement, importStylesheet, htmlToElement, jsonToBlob } from "./utils.js?v=34";
+      import { $, $$, delay, showEl, hideEl, prompt2, createFloatingWindow, sanitizeHtml, textToSpeech, sha256Text, dedent, downloadTextOrBlob, createGpt3Tokenizer, cosineDistance, createLoadingModal, applyObjectOverrides, objectKeysAndTypesAreValid, addBackgroundToElement, importStylesheet, htmlToElement, jsonToBlob } from "./utils.js?v=36";
 
       let JSON5;
       const JSON5Ready = (async function() {
@@ -705,8 +1196,9 @@
         return false;
       }
 
-      if(!window.isSecureContext) {
-        alert("Hey, looks like you're trying to host this locally, but you have hosted it in an insecure context - i.e. you're serving it on HTTP instead of HTTPS. Unfortunately there are a bunch of features that are disabled on HTTP connections for modern browsers. localhost is treated as a secure context for development purposes, but if you want to server it on the internet, then I recommend using Cloudflare - you just switch your domain's nameservers to them and then it's basically a button click and you've got HTTPS. Much easier than setting up your own certificate stuff.");
+      const insecureHttpContext = !window.isSecureContext;
+      if(insecureHttpContext) {
+        console.warn("Running over HTTP (non-secure context). Using HTTP-compatible fallbacks for hashing and storage.");
       }
 
       // polyfill for navigator.userActivation
@@ -1351,6 +1843,32 @@
         {name:"gpt-3.5-turbo-0301", shortLabel:"gpt-3.5-turbo-0301 - legacy/DEPRECATED", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
         {name:"text-embedding-ada-002", shortLabel:"text-embedding-ada-002", endpointUrl:"https://api.openai.com/v1/embeddings", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"text-embedding", tokenPricing:{prompt:0.0004, completion: 0.0004}},
       ];
+
+      const MODEL_GROUP_ORDER = ["Free (no API key)", "Custom / other", "OpenAI (needs API key)"];
+      function groupForModel(m) {
+        if(m.group) return m.group;
+        if(m.free) return "Free (no API key)";
+        if(m.endpointUrl.startsWith("https://api.openai.com")) return "OpenAI (needs API key)";
+        return "Custom / other";
+      }
+      function sortModelsForDropdown(models) {
+        return models.slice().sort((a, b) => {
+          let ga = groupForModel(a), gb = groupForModel(b);
+          let ia = MODEL_GROUP_ORDER.indexOf(ga), ib = MODEL_GROUP_ORDER.indexOf(gb);
+          if(ia === -1) ia = MODEL_GROUP_ORDER.length;
+          if(ib === -1) ib = MODEL_GROUP_ORDER.length;
+          if(ia !== ib) return ia - ib;
+          if(a.name === "perchance") return -1;
+          if(b.name === "perchance") return 1;
+          return 0;
+        });
+      }
+      function defaultThreadModelName() {
+        if(broadlyAvailableModels.some(m => m.name === "perchance")) return "perchance";
+        let freeModel = broadlyAvailableModels.find(m => m.free && (m.type === "chat-completion" || m.type === "completion"));
+        if(freeModel) return freeModel.name;
+        return "gpt-4o-mini";
+      }
       
       async function updateModelList() {
         // console.log("updateModelList");
@@ -1364,21 +1882,23 @@
         }
         // console.log("updateModelList", availableModels);
         let currentValue = $.threadModelSelector.value;
-        let selectableModels = modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion");
-        // group the models in the dropdown so free/OpenAI/custom options are easy to tell apart:
-        function groupFor(m) {
-          if(m.group) return m.group;
-          if(m.free) return "Free (no API key)";
-          if(m.endpointUrl.startsWith("https://api.openai.com")) return "OpenAI (needs API key)";
-          return "Custom / other";
+        let selectableModels = sortModelsForDropdown(modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion"));
+        if(!currentValue || !selectableModels.some(m => m.name === currentValue)) {
+          currentValue = defaultThreadModelName();
         }
         let groupOrder = [];
         let modelsByGroup = {};
         for(let m of selectableModels) {
-          let g = groupFor(m);
+          let g = groupForModel(m);
           if(!modelsByGroup[g]) { modelsByGroup[g] = []; groupOrder.push(g); }
           modelsByGroup[g].push(m);
         }
+        groupOrder.sort((a, b) => {
+          let ia = MODEL_GROUP_ORDER.indexOf(a), ib = MODEL_GROUP_ORDER.indexOf(b);
+          if(ia === -1) ia = MODEL_GROUP_ORDER.length;
+          if(ib === -1) ib = MODEL_GROUP_ORDER.length;
+          return ia - ib;
+        });
         $.threadModelSelector.innerHTML = groupOrder.map(g => `<optgroup label="${sanitizeHtml(g)}">` + modelsByGroup[g].map(m => `<option value="${sanitizeHtml(m.name)}" ${m.name === currentValue ? "selected" : ""}>${sanitizeHtml(m.shortLabel || m.name)}</option>`).join("") + `</optgroup>`).join("");
       }
       updateModelList();
@@ -1410,22 +1930,35 @@
             added = true;
           }
           // Perchance - only if the bridge has actually verified (produced text) at least once
-          try {
-            let ph = await fetch("/api/perchance/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
-            if(ph && ph.ready && !broadlyAvailableModels.some(m => m.name === "perchance")) {
-              broadlyAvailableModels.push({
-                name: "perchance",
-                shortLabel: "🆓 Perchance AI - free, no API key (via bridge)",
-                endpointUrl: location.origin + "/api/perchance/v1/chat/completions",
-                modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
-                maxSequenceLength: 6000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
-              });
-              added = true;
-              console.log("Perchance AI bridge is verified - the 'perchance' free model is available.");
-            } else if(!ph || !ph.ready) {
-              console.log("Perchance AI bridge not verified yet - the 'perchance' model won't be shown (normal on cloud/datacenter IPs where Cloudflare Turnstile refuses to verify).");
-            }
-          } catch(e) {}
+          async function tryAddPerchanceModel() {
+            try {
+              let ph = await fetch("/api/perchance/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+              if(ph && ph.ready && !broadlyAvailableModels.some(m => m.name === "perchance")) {
+                broadlyAvailableModels.push({
+                  name: "perchance",
+                  shortLabel: "🆓 Perchance AI - free, no API key (via bridge)",
+                  endpointUrl: location.origin + "/api/perchance/v1/chat/completions",
+                  modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
+                  maxSequenceLength: 6000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
+                });
+                await updateModelList();
+                console.log("Perchance AI bridge is verified - the 'perchance' free model is available.");
+                return true;
+              } else if(ph && ph.browserUp && !ph.ready) {
+                console.log("Perchance bridge is running but still waiting on Cloudflare verification...");
+              } else if(!ph || !ph.browserUp) {
+                console.log("Perchance AI bridge not available yet.");
+              }
+            } catch(e) {}
+            return false;
+          }
+          if(!(await tryAddPerchanceModel())) {
+            // The bridge can take a minute (or longer) to pass Turnstile on first boot.
+            const perchancePoll = setInterval(async () => {
+              if(await tryAddPerchanceModel()) clearInterval(perchancePoll);
+            }, 15000);
+            setTimeout(() => clearInterval(perchancePoll), 30 * 60 * 1000);
+          }
           if(added) await updateModelList();
         } else {
           console.log("No OpenCharacters server detected - free proxied models (Pollinations/Perchance) are unavailable. Use an OpenAI key or a custom model.");
@@ -1666,13 +2199,13 @@
             <div class="thread" data-thread-id="${sanitizeHtml(thread.id)}">
               <span class="favStar" data-is-fav="${thread.isFav}" role="button" tabindex="0" aria-label="Favorite this chat" title="Favorite this chat">⭐</span>
               <span class="changeFolderPath" role="button" tabindex="0" aria-label="Move chat to folder" title="Move chat to folder">📁</span>
-              <div class="avatar" style="${avatarUrl ? `background-image:url(${sanitizeHtml(avatarUrl)})` : ""}; border:1px solid var(--border-color);"></div>
-              <div class="info" style="flex-grow:1; padding-left:0.5rem;">
-                <div class="nameWrapper" style="font-weight:bold; font-size:0.8rem;"><span class="name" title="${sanitizeHtml(thread.name)}">${sanitizeHtml(thread.name)}</span></div>
-                <div class="characterName" style="font-size:0.8rem;">${thread.character.name.length > 15 ? sanitizeHtml(thread.character.name.slice(0, 15)+"…") : sanitizeHtml(thread.character.name)} <span style="opacity:0.5; font-weight:normal;" title="Character ID">#${sanitizeHtml(thread.character.id)}</span> <span class="characterEditButton">✏️</span></div>
-                <div style="font-size:0.8rem; opacity:0.5; padding-right:0.5rem; display:flex; justify-content:space-between;"><span style="font-size:0.65rem;" title="${sanitizeHtml(thread.modelName)}">${thread.modelName.length > 13 ? sanitizeHtml(thread.modelName.slice(0, 13))+"…" : sanitizeHtml(thread.modelName)}</span><span class="usageStatsSpend" title="API usage/spend" style="font-size:0.65rem;display:flex;align-items:center;">$${threadIdToMoneySpent[thread.id].toFixed(2)}</span><span style="font-size:0.65rem; display:flex; align-items:center; filter:grayscale(1);" title="Thread ID">🧵#${sanitizeHtml(thread.id)}</span></div>
+              <div class="avatar" style="${avatarUrl ? `background-image:url(${sanitizeHtml(avatarUrl)})` : ""};"></div>
+              <div class="info" style="flex-grow:1; padding-left:0.625rem; min-width:0;">
+                <div class="characterName">${thread.character.name.length > 20 ? sanitizeHtml(thread.character.name.slice(0, 20)+"…") : sanitizeHtml(thread.character.name)} <span class="characterIdTag" title="Character ID">#${sanitizeHtml(thread.character.id)}</span> <span class="characterEditButton" title="Edit character">✏️</span></div>
+                <div class="nameWrapper"><span class="name" title="${sanitizeHtml(thread.name)}">${sanitizeHtml(thread.name)}</span></div>
+                <div class="threadMeta"><span title="${sanitizeHtml(thread.modelName)}">${thread.modelName.length > 13 ? sanitizeHtml(thread.modelName.slice(0, 13))+"…" : sanitizeHtml(thread.modelName)}</span><span class="usageStatsSpend" title="API usage/spend">$${threadIdToMoneySpent[thread.id].toFixed(2)}</span><span title="Thread ID">🧵#${sanitizeHtml(thread.id)}</span></div>
               </div>
-              <div style="display:flex; flex-direction:column; justify-content:space-between; font-size:0.65rem;">
+              <div class="threadActions">
                 <span class="button nameEditButton" role="button" tabindex="0" aria-label="Rename chat" title="Rename chat">✏️</span>
                 <span class="button exportButton" role="button" tabindex="0" aria-label="Export chat" title="Export chat">💾</span>
                 <span class="button deleteButton" role="button" tabindex="0" aria-label="Delete chat" title="Delete chat">🗑️</span>
@@ -2317,21 +2850,26 @@
       }
 
       function createCharacterCardHtml(character) {
+        let tagline = (character.roleInstruction || "").replace(/\s+/g, " ").trim();
+        if(tagline.length > 90) tagline = tagline.slice(0, 90) + "…";
         return `
-          <div class="character" data-character-id="${sanitizeHtml(character.id)}" style="display:flex; padding:0.5rem; cursor:pointer;">
-            <div class="avatar" style="${character.avatar.url ? `background-image:url(${sanitizeHtml(character.avatar.url)})` : ""};"></div>
-            <div class="info" style="flex-grow:1; padding-left:0.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-              <div class="name" style="font-weight:bold;${character.name.length > 21 ? "font-size:0.8rem;" : ""}">${character.name.length > 21 ? sanitizeHtml(character.name.slice(0, 22)+"…") : sanitizeHtml(character.name)} <span style="opacity:0.5; font-weight:normal;">${character.id !== null ? "#"+sanitizeHtml(character.id) : ""}</span></div>
-              <!-- <div class="roleInstruction" style="font-size: 0.8rem; text-overflow: ellipsis; word-wrap: break-word; overflow: hidden; height: 2em; line-height: 1em;">${character.roleInstruction.length > 85 ? sanitizeHtml(character.roleInstruction.slice(0, 85)+"...") : sanitizeHtml(character.roleInstruction)}</div> -->
-              <div class="buttons" style="text-align:right;">
+          <div class="character" data-character-id="${sanitizeHtml(character.id)}" style="cursor:pointer;">
+            <div class="avatar" style="${character.avatar.url ? `background-image:url(${sanitizeHtml(character.avatar.url)})` : ""};">
+              ${character.avatar.url ? "" : `<span class="avatarFallback">${sanitizeHtml((character.name || "?").trim().slice(0, 1).toUpperCase())}</span>`}
+              <div class="buttons">
                 ${character.id === null ? "" :
-                `<button class="edit" title="Edit this character">✏️ edit</button>
-                <button class="changeFolderPath" title="Change folder">📁</button>
-                <button class="duplicate" title="Duplicate this character">➕</button>
-                <button class="share" title="Share this character with a link">🔗</button>
-                <button class="delete" title="Delete this character">🗑️</button>`
+                `<button class="edit" title="Edit this character" aria-label="Edit this character">✏️</button>
+                <button class="changeFolderPath" title="Change folder" aria-label="Change folder">📁</button>
+                <button class="duplicate" title="Duplicate this character" aria-label="Duplicate this character">➕</button>
+                <button class="share" title="Share this character with a link" aria-label="Share this character with a link">🔗</button>
+                <button class="delete" title="Delete this character" aria-label="Delete this character">🗑️</button>`
                 }
               </div>
+            </div>
+            <div class="info">
+              <div class="name">${sanitizeHtml(character.name)} <span class="characterIdTag">${(character.id !== null && character.id !== undefined) ? "#"+sanitizeHtml(character.id) : ""}</span></div>
+              <div class="tagline">${sanitizeHtml(tagline) || "&nbsp;"}</div>
+              <div class="startChatHint">Start chatting&nbsp;→</div>
             </div>
           </div>
         `;
@@ -2368,6 +2906,7 @@
         $.characterList.innerHTML = characters.map(character => createCharacterCardHtml(character)).join("");
 
         let starterCharacters = [
+          "/starters/unknown.json",
           {
             name: "Game Master",
             roleInstruction: "You are the Game Master. You describe the results of the player's actions. You start by asking the player what type of adventure they want to play. DO NOT try to \"wrap up\" the story at the end of your messages. Keep your messages short, but interesting, engaging and creative. Summon your full imagination. Don't move the story along too fast. Stay in the present moment.",
@@ -2593,9 +3132,15 @@
           `https://josephrocca.github.io/OpenCharacters/#%7B%22addCharacter%22%3A%7B%22name%22%3A%22Custom%20Code%20Helper%22%2C%22roleInstruction%22%3A%22%5BAI%5D%3A%20Here%20are%20some%20notes%20about%20how%20to%20write%20%5C%22custom%20code%5C%22%20for%20the%20OpenCharacters%20chat%20application.%20You%20can%20use%20custom%20code%20to%20give%20your%20AI%20characters%20more%20abilities%2C%20or%20to%20augment%20the%20chat%20experience%20in%20interesting%20ways.%5Cn%5Cn%23%20%60message%60%20object%3A%5Cn%60%60%60%5Cn%7B%5Cn%20%20author%3A%20%5C%22user%5C%22%2C%20%2F%2F%20or%20%5C%22ai%5C%22%20or%20%5C%22system%5C%22%5Cn%20%20name%3A%20%5C%22Anon%5C%22%2C%5Cn%20%20hiddenFrom%3A%20%5B%5D%2C%20%2F%2F%20can%20contain%20%5C%22user%5C%22%20and%2For%20%5C%22ai%5C%22%5Cn%20%20content%3A%20%5C%22Hello%5C%22%2C%5Cn%20%20expectsReply%3A%20false%2C%20%2F%2F%20ai%20will%20not%20automatically%20reply%20to%20this%20message%5Cn%7D%5Cn%60%60%60%5Cn%23%20Examples%3A%5Cn%60%60%60%5Cn%2F%2F%20Replace%20%5C%22%3A%29%5C%22%20with%20%5C%22%F0%9F%98%8A%5C%22%20in%20messages%20when%20they%20are%20added%3A%5Cnoc.thread.on%28%5C%22MessageAdded%5C%22%2C%20function%28%29%20%7B%5Cn%20%20let%20m%20%3D%20oc.thread.messages.at%28-1%29%3B%20%2F%2F%20get%20the%20added%20message%5Cn%20%20m.content%20%3D%20m.content.replaceAll%28%5C%22%3A%29%5C%22%2C%20%5C%22%F0%9F%98%8A%5C%22%29%3B%5Cn%7D%29%3B%5Cn%5Cn%2F%2F%20Set%20the%20ai%20character%27s%20avatar%20URL%3A%5Cnoc.character.avatar.url%20%3D%20%5C%22https%3A%2F%2Fexample.com%2Fimg.jpg%5C%22%5Cn%5Cn%2F%2F%20If%20a%20message%20contains%20%5C%22dog%5C%22%2C%20set%20the%20message%20avatar%20url%20to%20a%20dog%20pic%5Cnoc.thread.on%28%5C%22MessageAdded%5C%22%2C%20function%28%29%20%7B%5Cn%20%20let%20m%20%3D%20oc.thread.messages.at%28-1%29%3B%20%2F%2F%20get%20the%20added%20message%5Cn%20%20if%28m.content.includes%28%5C%22dog%5C%22%29%29%20m.avatar%20%3D%20%7Burl%3A%5C%22https%3A%2F%2Fexample.com%2Fdog.jpg%5C%22%7D%3B%5Cn%7D%29%3B%5Cn%5Cn%2F%2F%20if%20user%20sends%20%5C%22%2Fcharname%20%3Cname%3E%5C%22%2C%20update%20the%20character%20name%3A%5Cnoc.thread.on%28%5C%22MessageAdded%5C%22%2C%20async%20function%20%28%29%20%7B%5Cn%20%20let%20m%20%3D%20oc.thread.messages.at%28-1%29%3B%20%2F%2F%20most%20recent%20message%5Cn%20%20if%28m.author%20%3D%3D%3D%20%5C%22user%5C%22%20%26%26%20m.content.startsWith%28%5C%22%2Fcharname%20%5C%22%29%29%20%7B%5Cn%20%20%20%20oc.character.name%20%3D%20m.content.replace%28%2F%5E%5C%5C%2Fcharname%20%2F%2C%20%5C%22%5C%22%29%3B%5Cn%20%20%20%20oc.thread.messages.pop%28%29%3B%20%2F%2F%20remove%20the%20%5C%22%2Fcharname%20...%5C%22%20message%5Cn%20%20%7D%5Cn%7D%29%3B%5Cn%5Cn%2F%2F%20display%20different%20text%20to%20the%20user%20than%20what%20the%20AI%20sees%3A%5Cnoc.messageRenderingPipeline.push%28function%28%7Bmessage%2C%20reader%7D%29%20%7B%5Cn%20%20if%28reader%20%3D%3D%3D%20%5C%22user%5C%22%29%20message.content%20%2B%3D%20%5C%22%F0%9F%8C%B8%5C%22%3B%20%2F%2F%20user%20will%20see%20all%20messages%20with%20a%20flower%20emoji%20appended%5Cn%20%20if%28reader%20%3D%3D%3D%20%5C%22user%5C%22%29%20message.content%20%3D%20message.content.replaceAll%28%5C%22wow%5C%22%2C%20%5C%22WOW%5C%22%29%3B%20%2F%2F%20ai%20will%20see%20a%20version%20of%20the%20message%20with%20all%20instances%20of%20%5C%22wow%5C%22%20capitalized%5Cn%7D%29%3B%5Cn%5Cn%2F%2F%20Intelligently%20add%20emojis%20to%20a%20message%20using%20GPT%20completion%20API%3A%5Cnoc.thread.on%28%5C%22MessageAdded%5C%22%2C%20async%20function%28%29%20%7B%5Cn%20%20let%20lastMessage%20%3D%20oc.thread.messages.at%28-1%29%3B%5Cn%20%20let%20result%20%3D%20await%20oc.getChatCompletion%28%7B%5Cn%20%20%20%20messages%3A%20%5B%7Bauthor%3A%5C%22user%5C%22%2C%20content%3A%60Please%20edit%20the%20following%20message%20to%20have%20more%20emojis%3A%5C%5Cn%5C%5Cn---%5C%5Cn%24%7BlastMessage.content%7D%5C%5Cn---%5C%5Cn%5C%5CnReply%20with%20only%20the%20above%20message%20%28the%20content%20between%20---%29%2C%20but%20with%20more%20%28relevant%29%20emojis.%60%7D%5D%2C%5Cn%20%20%7D%29%3B%5Cn%20%20lastMessage.content%20%3D%20result.trim%28%29.replace%28%2F%5E---%7C---%24%2Fg%2C%20%5C%22%5C%22%29.trim%28%29%3B%5Cn%7D%29%3B%5Cn%60%60%60%5Cn%5CnTop-level%20%60await%60%20is%20supported%20because%20the%20code%20is%20executed%20in%20a%20%60type%3Dmodule%60%20script%20tag.%5Cn%5CnYou%20can%20store%20custom%20data%20using%20%60oc.thread.customData%60%20-%20e.g.%20%60oc.thread.customData.foo%20%3D%2010%60.%20You%20can%20also%20store%20custom%20data%20on%20individual%20messages%20like%20this%3A%20%60message.customData.foo%20%3D%2010%60.%5Cn%5CnAll%20your%20%60MessageAdded%60%20handlers%20are%20guaranteed%20to%20be%20finished%20before%20the%20next%20message%20is%20added.%5Cn%5CnThe%20custom%20code%20runs%20within%20an%20iframe%2C%20and%20you%20can%20show%20the%20iframe%20with%20%60oc.window.show%28%29%60.%20This%20is%20useful%20if%20you%20want%20to%20create%20a%20custom%20interface.%20You%20can%20add%20stuff%20to%20your%20interface%20by%20just%20editing%2Fadding-to%20the%20HTML%20document%2C%20like%20so%3A%5Cn%60%60%60js%5Cndocument.body.innerHTML%20%3D%20%5C%22stuff%20you%20want%20to%20add%5C%22%3B%5Cn%60%60%60%5CnYou%20can%20hide%20the%20window%20with%20%60oc.window.hide%28%29%60.%5Cn%5CnHere%27s%20the%20full%20set%20of%20properties%20on%20the%20%60oc%60%20object%3A%5Cn%20%20%2a%20character%5Cn%20%20%20%20%2a%20name%5Cn%20%20%20%20%2a%20avatar%5Cn%20%20%20%20%20%20%2a%20url%20-%20image%20url%5Cn%20%20%20%20%20%20%2a%20size%20-%20default%3D1%5Cn%20%20%20%20%20%20%2a%20shape%20-%20%5C%22circle%5C%22%20or%20%5C%22square%5C%22%20or%20%5C%22portrait%5C%22%20%5Cn%20%20%2a%20thread%5Cn%20%20%20%20%2a%20messages%20-%20an%20%2a%2aarray%2a%2a%20of%20messages%2C%20where%20%2a%2aeach%20message%2a%2a%20has%3A%5Cn%20%20%20%20%20%20%2a%20content%20-%20the%20message%20text%20-%20it%20can%20include%20HTML%2C%20and%20is%20rendered%20as%20markdown%20by%20default%20%28see%20%60oc.messageRenderingPipeline%60%29%5Cn%20%20%20%20%20%20%2a%20author%5Cn%20%20%20%20%20%20%2a%20name%5Cn%20%20%20%20%20%20%2a%20hiddenFrom%20-%20array%20with%20%5C%22user%5C%22%20or%20%5C%22ai%5C%22%20or%20both%20or%20neither%5Cn%20%20%20%20%20%20%2a%20expectsReply%20-%20boolean%20%28will%20bot%20reply%20to%20this%20message%3F%29%5Cn%20%20%20%20%20%20%2a%20customData%20-%20message-specific%20custom%20data%20storage%5Cn%20%20%20%20%20%20%2a%20avatar%20%3D%20%7Burl%2C%20size%2C%20shape%7D%20-%20message-specific%20avatar%20%28overrides%20default%29%5Cn%20%20%20%20%20%20%2a%20wrapperStyle%20-%20css%20for%20the%20%5C%22message%20bubble%5C%22%20-%20e.g.%20%5C%22background%3Awhite%3B%20border-radius%3A10px%3B%5C%22%5Cn%20%20%20%20%20%20%2a%20scene%20-%20most%20recent%20message%20with%20a%20%60scene%60%20sets%20the%20background%2Fmusic%5Cn%20%20%20%20%20%20%20%20%2a%20background%5Cn%20%20%20%20%20%20%20%20%20%20%2a%20url%20-%20image%20or%20video%20url%5Cn%20%20%20%20%20%20%20%20%20%20%2a%20filter%20-%20css%20filter%20-%20e.g.%20%60hue-rotate%2890deg%29%3B%20blur%285px%29%60%5Cn%20%20%20%20%20%20%20%20%2a%20music%5Cn%20%20%20%20%20%20%20%20%20%20%2a%20url%20-%20audio%20url%20%28also%20supports%20video%20urls%29%5Cn%20%20%20%20%20%20%20%20%20%20%2a%20volume%20-%20between%200%20and%201%5Cn%20%20%20%20%2a%20userCharacter%5Cn%20%20%20%20%20%20%2a%20name%5Cn%20%20%20%20%20%20%2a%20avatar%20%3D%20%7Burl%2C%20size%2C%20shape%7D%5Cn%20%20%20%20%2a%20customData%20-%20thread-specific%20custom%20data%20storage%5Cn%20%20%2a%20messageRenderingPipeline%5Cn%20%20%2a%20window%20%3D%20%7Bshow%2C%20hide%7D%22%2C%22reminderMessage%22%3A%22%5BAI%5D%3A%20%28Thought%3A%20I%20should%20almost%20always%20use%20%60oc.getChatCompletion%60%20to%20do%20message%20edits%2C%20like%20in%20the%20above%20%5C%22include%20more%20emojis%5C%22%20example%20%28%60await%20oc.getChatCompletion%28%7Bmessages%3A%20%5B%7Bauthor%3A%5C%22user%5C%22%2C%20content%3A%5C%22...%5C%22%7D%5D%7D%29%60%29.%20It%20prompts%20an%20LLM%20to%20do%20the%20editing%2C%20so%20it%20can%20intelligently%20do%20many%20things%20that%20would%20be%20hard%20to%20implement%20using%20regular%20JavaScript%20code.%20Use%20it%20as%20a%20general%20%5C%22text%20transformation%2Fediting%2Fsummarization%2Fetc%5C%22%20tool.%20This%20is%20much%20better%20than%20using%20replace%2FreplaceAll%20unless%20it%20is%20a%20fairly%20simple%20task%20for%20a%20regex%20replace.%29%22%2C%22modelName%22%3A%22gpt-3.5-turbo%22%2C%22fitMessagesInContextMethod%22%3A%22summarizeOld%22%2C%22associativeMemoryMethod%22%3A%22none%22%2C%22associativeMemoryEmbeddingModelName%22%3A%22text-embedding-ada-002%22%2C%22temperature%22%3A0.7%2C%22customCode%22%3A%22%22%2C%22initialMessages%22%3A%5B%7B%22author%22%3A%22system%22%2C%22content%22%3A%22This%20character%20uses%20the%20%5Bcustom%20code%20docs%5D%28https%3A%2F%2Fgithub.com%2Fjosephrocca%2FOpenCharacters%2Fblob%2Fmain%2Fdocs%2Fcustom-code.md%29%20and%20tries%20to%20help%20you%20write%20custom%20code.%20It%20will%20probably%20make%20lots%20of%20mistakes%20and%20in%20general%20just%20do%20silly%20things.%20You%20should%20definitely%20%2a%2aswitch%20the%20model%20to%20GPT-4%2a%2a%20if%20you%20can%20afford%20it%20-%20it%27s%20%2a%2amuch%2a%2a%20smarter.%22%2C%22hiddenFrom%22%3A%5B%22ai%22%5D%7D%5D%2C%22avatar%22%3A%7B%22url%22%3A%22https%3A%2F%2Fi.imgur.com%2FZ8NL9u6.jpg%22%2C%22size%22%3A1%2C%22shape%22%3A%22square%22%7D%2C%22scene%22%3A%7B%22background%22%3A%7B%22url%22%3A%22%22%7D%2C%22music%22%3A%7B%22url%22%3A%22%22%7D%7D%2C%22userCharacter%22%3A%7B%22avatar%22%3A%7B%7D%7D%2C%22streamingResponse%22%3Atrue%7D%7D`,
         ];
         for(let i = 0; i < starterCharacters.length; i++) {
-          // convert URL format to object:
+          // convert URL / bundled-json format to object:
           if(typeof starterCharacters[i] === "string") {
-            starterCharacters[i] = JSON.parse(decodeURIComponent(starterCharacters[i].split("#")[1])).addCharacter;
+            let src = starterCharacters[i];
+            if(src.includes("#")) {
+              starterCharacters[i] = JSON.parse(decodeURIComponent(src.split("#")[1])).addCharacter;
+            } else {
+              let json = await fetch(src, {cache:"no-store"}).then(r => r.json());
+              starterCharacters[i] = json.addCharacter ?? json;
+            }
           }
           starterCharacters[i].id = null;
         }
@@ -2816,11 +3361,9 @@
         return {title, imageUrl, text};
       }
 
-      // pick a sensible default model for generation (prefer a free/no-key model so this works without an API key)
+      // pick a sensible default model for generation (prefer Perchance bridge, then other free models)
       function defaultGenerationModelName() {
-        let freeModel = broadlyAvailableModels.find(m => m.free && (m.type === "chat-completion" || m.type === "completion"));
-        if(freeModel) return freeModel.name;
-        return "gpt-4o-mini";
+        return defaultThreadModelName();
       }
 
       async function generateCharacterFromWebPage({url, hint, modelName}) {
@@ -2891,7 +3434,7 @@
 
       async function promptAndGenerateCharacterFromWebPage(defaultUrl="") {
         try { await serverModelProvidersReady; } catch(e) {} // make sure free models are registered before we build the dropdown
-        let chatModels = broadlyAvailableModels.filter(m => m.type === "chat-completion" || m.type === "completion");
+        let chatModels = sortModelsForDropdown(broadlyAvailableModels.filter(m => m.type === "chat-completion" || m.type === "completion"));
         let modelOptions = chatModels.map(m => ({value:m.name, content:m.shortLabel || m.name}));
         let promptResult = await prompt2({
           url: {label: "🌐 Web page URL to build a character from:", type:"textLine", placeholder:"https://en.wikipedia.org/wiki/Ada_Lovelace", defaultValue: defaultUrl, focus:true},
@@ -3033,6 +3576,20 @@
       const defaultSystemName = "System";
 
       async function createNewThreadWithCharacterId(characterId) {
+        // "template" characters (customData.duplicateOnNewThread) never get used directly: each new
+        // chat spawns a fresh copy, so transforming characters (like 'Unknown') keep their template intact.
+        let templateCharacter = await db.characters.get(characterId);
+        if(templateCharacter?.customData?.duplicateOnNewThread) {
+          let copy = structuredClone(templateCharacter);
+          delete copy.id;
+          delete copy.uuid;
+          delete copy.customData.duplicateOnNewThread;
+          copy.folderPath = templateCharacter.folderPath ?? "";
+          const newCharacter = await addCharacter(copy);
+          characterId = newCharacter.id;
+          await renderCharacterList().catch(() => {});
+        }
+
         let folderPath = $.chatThreads.dataset.currentFolderPath;
         const thread = await addThread({name:defaultThreadName, characterId, folderPath});
 
@@ -3119,6 +3676,15 @@
 
         updateFavicon(characterObj.avatar.url);
         document.title = `${characterObj.name} - ${thread.name} - OpenCharacters`;
+
+        // populate the chat header with the character's identity
+        try {
+          let headerAvatarUrl = thread.character.avatar.url || characterObj.avatar.url;
+          if(headerAvatarUrl && headerAvatarUrl.startsWith("data:")) headerAvatarUrl = await dataUrlToCachedBlobUrl(headerAvatarUrl);
+          $.chatHeaderAvatar.style.backgroundImage = headerAvatarUrl ? `url(${headerAvatarUrl})` : "";
+          $.chatHeaderName.textContent = thread.character.name || characterObj.name;
+          $.chatHeaderThreadName.textContent = thread.name || "";
+        } catch(e) { console.warn("could not populate chat header:", e); }
 
         $.chatThreads.dataset.currentFolderPath = thread.folderPath;
         await renderThreadList();
@@ -3261,7 +3827,7 @@
           reminderMessage: { label: "💭 Reminder message - an invisible system message that is placed before every AI response (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message is inserted as a reminder at the end of the chat right before each AI response. This will always be the last/most-recent message that the AI sees when writing its response. If you later decide to edit this, all existing and new threads will be immediately updated. This message is not seen/summarized by the summarization algorithm - it will always be present as the final message.", height:"fit-content", minHeight:"3rem", type:"text", placeholder: "Stay in character! Sammy will now respond without breaking character.", defaultValue: defaultValues.reminderMessage || "" },
           initialMessagesText: { label: `💬 Initial chat messages (optional). Useful for extra alignment to character. Follow the format explained <a href="https://github.com/josephrocca/OpenCharacters/blob/main/docs/initial-messages.md" target='blank'>here</a>.`, infoTooltip:"During the initialization of every new thread with this character, these messages will be created and placed at the start of the thread. Note that the summarization algorithm will eventually summarize these messages - so they won't stay around forever (unlike the instruction and reminder messages, which *do* stay around forever). Also note that if you edit the initial messages, only *new* threads will have the updated initial messages. In other words, once a chat thread has been created, the initial messages that are added to a thread during init 'belong' to that thread, not to the character.", type:"text", height:"fit-content", placeholder: "[USER]: Hey Sammy, do you have opinions?\n[SYSTEM]: The next message will include an emoji.\n[AI]: Yes! I have lots of opinions. 🤔\n[SYSTEM; hiddenFrom=ai]: The AI can't see this message. Useful for user instructions.", defaultValue: initialMessagesText ?? "" },
           avatarUrl: { label: "👤 Avatar URL (png/jpg/etc):", type:"textLine", placeholder: "(optional)", defaultValue: defaultValues.avatar?.url || "" },
-          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"'GOOD/CHEAP' and 'GREAT/EXPENSIVE' automatically map to a sensible current model, so they're the safest choices if you want your character to keep working as models come and go. You can also pick a specific model, or add your own via the custom model configs in the main settings.", type:"select", options:[{content:"GOOD/CHEAP (currently: gpt-4o-mini)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4o)", value:"great"}, ...broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => ({value:m.name, content:m.shortLabel}))], defaultValue: defaultValues.modelName || "good" },
+          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"Perchance (free) is the default. 'GOOD/CHEAP' and 'GREAT/EXPENSIVE' automatically map to a sensible current paid model. You can also pick a specific model, or add your own via the custom model configs in the main settings.", type:"select", options:[...sortModelsForDropdown(broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion")).map(m => ({value:m.name, content:m.shortLabel})), {content:"GOOD/CHEAP (currently: gpt-4o-mini)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4o)", value:"great"}], defaultValue: defaultValues.modelName || defaultThreadModelName() },
           maxTokensPerMessage: { hidden:true, label: "📏 Max tokens per message:", infoTooltip:"This can be used to limit the length of the AI's responses. A 'token' is basically a word - 500 tokens is about 400 words in most tokenizers. Leave this blank to allow unlimited tokens to be generated per message. Note that you can also control the length of the AI's responses in the reminder message by saying something like 'Your response should be at most 3 sentences' or whatever.", type:"textLine", defaultValue:defaultValues.maxTokensPerMessage || "" },
           fitMessagesInContextMethod: { hidden:true, label: "Method for fitting messages within model's context limit.", type:"select", options:[{value:"dropOld", content:"drop oldest messages"}, {value:"summarizeOld", content:"summarize oldest messages"}], defaultValue: defaultValues.fitMessagesInContextMethod ?? "summarizeOld" },
           textEmbeddingModelName: { hidden:true, label: "Text embedding model:", infoTooltip:"Yep, there's currently only one option for this. Will add more in the future. It's what converts each memory/lore entry (text) into a bunch of numbers that can be efficiently used for search/similarity/lookup.", type:"select", options:[...broadlyAvailableModels.filter(m => m.type === "text-embedding").map(m => ({value:m.name, content:m.name}))], defaultValue: defaultValues.textEmbeddingModelName ?? "text-embedding-ada-002" },
@@ -3578,11 +4144,12 @@
       })();
 
       async function addThread({name, characterId, folderPath}) {
+        try { await serverModelProvidersReady; } catch(e) {}
         let aiCharacter = await db.characters.get(characterId);
 
         let modelName = aiCharacter.modelName;
-        if(modelName === "good") modelName = "gpt-4o-mini";
-        if(modelName === "great") modelName = "gpt-4o";
+        if(modelName === "good" || !modelName) modelName = defaultThreadModelName();
+        else if(modelName === "great") modelName = "gpt-4o";
 
         // get highest bookId value:
         let loreBookId = (await db.lore.orderBy("bookId").last() ?? {bookId:-1}).bookId;
@@ -5197,11 +5764,16 @@
               text = json.choices[0].text;
               if(chunkI===0) text = text.trimStart(); // trimStart due to the way we prompt 'completion' models (we show messages with a space after `[name]:`)
             } else {
-              if(json.choices[0].delta.role) return; // first response always starts with a role=assistant delta to indicate that the assistant is the one talking
-              if(!json.choices[0].delta.content) return; // final response alway has empty delta object
-              text = json.choices[0].delta.content;
+              const delta = json.choices[0].delta || {};
+              // Some providers (e.g. Pollinations) include delta.role on every chunk, not just the first.
+              // Only skip role-only heartbeats with no actual text payload.
+              if(delta.role && delta.content === undefined && delta.text === undefined) return;
+              if(delta.content === undefined || delta.content === null) return;
+              text = delta.content;
             }
             
+            if(!text) return;
+
             result += text;
             onStreamingReplyChunk({text, isFirst:chunkI===0});
 
@@ -5334,7 +5906,7 @@
             if(json?.usage) {
               apiTokenUsage = {prompt:json?.usage.prompt_tokens, completion:json?.usage.completion_tokens, total:json?.usage.total_tokens};
             }
-            result = json?.choices?.[0].message.content;
+            result = json?.choices?.[0].message.content ?? json?.choices?.[0].message.reasoning ?? "";
           }
 
         } else {
@@ -7231,7 +7803,7 @@
           window.addEventListener("message", handler);
         });
 
-        iframe.setAttribute("sandbox", "allow-scripts");
+        iframe.setAttribute("sandbox", "allow-scripts allow-modals"); // allow-modals: some characters use prompt()/confirm() in their custom code
         // we MUST NOT set display:none here, because otherwise window.innerWidth/innerHeight are zero on init, which can confuse plugin devs.
         // instead we set opacity:0 and pointer-events:none, and then switch to display:none after load.
         iframe.style.cssText = "border:0; width:100%; height:100%; pointer-events:none; opacity:0; display:absolute; background:var(--background);";
@@ -7379,6 +7951,34 @@
               getChatCompletion: async function(options) {
                 let data = {type:"getChatCompletion", options};
                 return callParentWindow(data);
+              },
+              textToImage: async function(options) {
+                if(!options || !options.prompt) throw new Error("Invalid params given to textToImage - must at least give 'prompt' in input object");
+                let data = {type:"textToImage", options};
+                return callParentWindow(data);
+              },
+              // Perchance ai-character-chat compatibility: characters written for Perchance call
+              // oc.generateText({instruction, startWith, stopSequences}) and expect {text, stopReason}.
+              generateText: async function(options={}) {
+                if(typeof options === "string") options = {instruction: options};
+                if(!options.instruction) throw new Error("Invalid params given to generateText - must at least give 'instruction' in input object");
+                try {
+                  let content = String(options.instruction);
+                  if(options.startWith) content += "\\n\\nBegin your response with exactly: " + options.startWith;
+                  let result = await window.oc.getChatCompletion({
+                    messages: [{author:"user", content}],
+                    stopSequences: Array.isArray(options.stopSequences) ? options.stopSequences : undefined,
+                    temperature: options.temperature,
+                  });
+                  let text = typeof result === "string" ? result : "";
+                  // perchance includes the startWith text in response.text - replicate that:
+                  if(options.startWith && text && !text.trimStart().startsWith(options.startWith)) {
+                    text = options.startWith + text;
+                  }
+                  return { text, stopReason: text ? "stop" : "error" };
+                } catch(e) {
+                  return { text: "", stopReason: "error", error: String(e && e.message || e) };
+                }
               },
               messageRenderingPipeline: [],
             };
@@ -7913,12 +8513,41 @@
       const threadIdsBlockedFromGoingOverTokenLimit = new Set();
       window.addEventListener("message", async function(e) {
         let threadId = e.data.threadId;
-        let types = ["getChatCompletion", "dataChanged"];
+        let types = ["getChatCompletion", "dataChanged", "textToImage"];
         const data = e.data.data;
         if(data && types.includes(data.type) && customCodeIframes[threadId]?.contentWindow === e.source) {
           let thread = await db.threads.get(threadId);
           let character = await db.characters.get(thread.characterId);
-          
+
+          if(data.type === "textToImage") {
+            let options = data.options || {};
+            if(!options.prompt || typeof options.prompt !== "string") {
+              customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Invalid parameter: Must give `prompt` string to `oc.textToImage`."}, "*");
+              return;
+            }
+            try {
+              // image generation goes through the local Perchance bridge (text-to-image-plugin)
+              let response = await fetch("/api/perchance/v1/images/generations", {
+                method: "POST",
+                headers: {"content-type": "application/json"},
+                body: JSON.stringify({
+                  prompt: options.prompt+"",
+                  negativePrompt: options.negativePrompt ? options.negativePrompt+"" : undefined,
+                  seed: options.seed,
+                  guidanceScale: options.guidanceScale,
+                  resolution: options.resolution,
+                }),
+              });
+              let json = await response.json();
+              if(!response.ok || !json.dataUrl) throw new Error(json?.error?.message || ("HTTP "+response.status));
+              customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:true, result:{dataUrl:json.dataUrl}}, "*");
+            } catch(err) {
+              console.error("textToImage via perchance bridge failed:", err);
+              customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Image generation failed: "+err.message}, "*");
+            }
+            return;
+          }
+
           if(data.type === "getChatCompletion") {
             let options = data.options;
             let messages = options.messages;
@@ -8558,10 +9187,7 @@
       });
 
       $.messageInput.addEventListener("input", async e => {
-        if($.messageInput.value.length % 10 === 0) {
-          await delay(10);
-          resizeMessageInputTextAreaToFitContent();
-        }
+        resizeMessageInputTextAreaToFitContent();
       });
 
       $.clearDataButton.addEventListener("click", async function() {
@@ -9481,36 +10107,27 @@
       }
 
       if(await checkForHashCommand() === null) {
-        // if there are no threads, show the character selection screen
-        if(!$("#chatThreads .thread")) {
-          $.newThreadButton.click();
-        } else {
-          // otherwise click the most recently-interacted-with thread
-          let allThreads = await db.threads.orderBy("lastViewTime").reverse().toArray();
-          let thread = allThreads[0];
-          if($.chatThreads.dataset.currentFolderPath !== thread.folderPath) {
-            $.chatThreads.dataset.currentFolderPath = thread.folderPath;
-            await renderThreadList();
-          }
-          let el = $.chatThreads.querySelector(`.thread[data-thread-id="${thread.id}"]`);
-          if(!el) el = $.chatThreads.querySelector(`.thread`); // in case the 'last viewed' thread is in a different folder to the 'last messaged' thread (renderThreadList shows last messaged thread)
-          el.click();
-        }
+        // always land on the character discovery screen; existing chats are one click away in the sidebar
+        $.newThreadButton.click();
       }
 
       try {
-        await navigator.storage.persist().then(async (persistent) => {
-          if(persistent) {
-            console.log("Storage will not be cleared except by explicit user action.");
-          } else {
-            console.warn("Storage may be cleared by the browser under storage pressure.");
-            // Can't just use e.g. message count because they could have just imported a bunch of messages.
-            let datesApplicationWasUsedInThisBrowser = (await db.misc.get("datesApplicationWasUsedInThisBrowser"))?.value ?? [];
-            if(datesApplicationWasUsedInThisBrowser.length > 10) {
-              alert("Your browser is not allowing OpenCharacters to store data in a way that is 100% permanent. Your browser may clear your OpenCharacters data if your hard drive is nearly full. The browser will eventually grant permission once it recognises that you are a regular user of this site (i.e. once you demonstrate that you trust this site), but until then, please be sure to backup/export your data often. If you're a regular user of OpenCharacters and you're still seeing this message after a week or so of use, please submit a bug report on our Discord server."); 
+        if(navigator.storage?.persist) {
+          await navigator.storage.persist().then(async (persistent) => {
+            if(persistent) {
+              console.log("Storage will not be cleared except by explicit user action.");
+            } else if(!insecureHttpContext) {
+              console.warn("Storage may be cleared by the browser under storage pressure.");
+              // Can't just use e.g. message count because they could have just imported a bunch of messages.
+              let datesApplicationWasUsedInThisBrowser = (await db.misc.get("datesApplicationWasUsedInThisBrowser"))?.value ?? [];
+              if(datesApplicationWasUsedInThisBrowser.length > 10) {
+                alert("Your browser is not allowing OpenCharacters to store data in a way that is 100% permanent. Your browser may clear your OpenCharacters data if your hard drive is nearly full. The browser will eventually grant permission once it recognises that you are a regular user of this site (i.e. once you demonstrate that you trust this site), but until then, please be sure to backup/export your data often. If you're a regular user of OpenCharacters and you're still seeing this message after a week or so of use, please submit a bug report on our Discord server.");
+              }
+            } else {
+              console.warn("Persistent storage is unavailable over HTTP; chats are still saved server-side when using server.js.");
             }
-          }
-        });
+          });
+        }
       } catch(e) {
         console.error(e);
       }
