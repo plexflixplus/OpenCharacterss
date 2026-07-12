@@ -34,14 +34,18 @@ export async function prompt2(specs, opts={}) {
   let sections = "";
   let structuredSectionsI = 0;
   let i = 0;
+  // unique per-dialog prefix so label/input `id` associations don't clash if multiple dialogs exist
+  const dialogId = "prompt2-" + Math.random().toString(36).slice(2, 9);
+  // expandable inline help (instead of a blocking alert popup)
+  const infoTooltipHtml = (spec) => spec.infoTooltip ? ` <button type="button" class="infoTooltipButton" aria-label="More info" aria-expanded="false" title="More info" style="cursor:pointer; background:none; border:none; padding:0; font-size:inherit;">ℹ️</button><span class="infoTooltipContent" style="display:none; font-weight:normal; opacity:0.8; margin-top:0.25rem;">${sanitizeHtml(spec.infoTooltip)}</span>` : "";
   for(let [key, spec] of Object.entries(specs)) {
     if(spec.type == "select") {
       sections += `
         <section class="structuredInputSection" data-is-hidden-extra="${spec.hidden === true ? "yes" : "no"}" style="${spec.hidden === true ? "display:none" : ""};">
-          <div class="sectionLabel" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${spec.infoTooltip ? ` <span title="${sanitizeHtml(spec.infoTooltip)}" style="cursor:pointer;" onclick="alert(this.title)">ℹ️</span>` : ""}</div>
+          <div class="sectionLabel" id="${dialogId}-label-${sanitizeHtml(key)}" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${infoTooltipHtml(spec)}</div>
           <div style="display:flex;">
             <div style="flex-grow:1;">
-              <select data-spec-key="${sanitizeHtml(key)}" value="${sanitizeHtml(spec.defaultValue)}" ${spec.disabled === true ? "disabled" : ""} style="width:100%;height:100%; padding:0.25rem;">${spec.options.map(o => `<option value="${sanitizeHtml(o.value)}" ${o.value === spec.defaultValue ? "selected" :""}>${sanitizeHtml(o.content) || sanitizeHtml(o.value)}</option>`).join("")}</select>
+              <select data-spec-key="${sanitizeHtml(key)}" aria-labelledby="${dialogId}-label-${sanitizeHtml(key)}" value="${sanitizeHtml(spec.defaultValue)}" ${spec.disabled === true ? "disabled" : ""} style="width:100%;height:100%; padding:0.25rem;">${spec.options.map(o => `<option value="${sanitizeHtml(o.value)}" ${o.value === spec.defaultValue ? "selected" :""}>${sanitizeHtml(o.content) || sanitizeHtml(o.value)}</option>`).join("")}</select>
             </div>
           </div>
         </section>`;
@@ -49,10 +53,10 @@ export async function prompt2(specs, opts={}) {
     } else if(spec.type == "textLine") {
       sections += `
         <section class="structuredInputSection" data-is-hidden-extra="${spec.hidden === true ? "yes" : "no"}" style="${spec.hidden === true ? "display:none" : ""};">
-          <div class="sectionLabel" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${spec.infoTooltip ? ` <span title="${sanitizeHtml(spec.infoTooltip)}" style="cursor:pointer;" onclick="alert(this.title)">ℹ️</span>` : ""}</div>
+          <div class="sectionLabel" id="${dialogId}-label-${sanitizeHtml(key)}" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${infoTooltipHtml(spec)}</div>
           <div style="display:flex;">
             <div style="flex-grow:1;">
-              <input data-initial-focus="${spec.focus === true ? "yes" : "no"}" data-spec-key="${sanitizeHtml(key)}" ${spec.disabled === true ? "disabled" : ""} value="${sanitizeHtml(spec.defaultValue)}" style="width:100%;height:100%; border: 1px solid lightgrey; border-radius: 3px; padding: 0.25rem;" type="text" placeholder="${sanitizeHtml(spec.placeholder)}" ${spec.validationPattern ? `pattern="${sanitizeHtml(spec.validationPattern)}"` : ""}>
+              <input data-initial-focus="${spec.focus === true ? "yes" : "no"}" data-spec-key="${sanitizeHtml(key)}" aria-labelledby="${dialogId}-label-${sanitizeHtml(key)}" ${spec.disabled === true ? "disabled" : ""} value="${sanitizeHtml(spec.defaultValue)}" style="width:100%;height:100%; border: 1px solid var(--input-border, lightgrey); border-radius: 3px; padding: 0.25rem;" type="text" placeholder="${sanitizeHtml(spec.placeholder)}" ${spec.validationPattern ? `pattern="${sanitizeHtml(spec.validationPattern)}"` : ""}>
             </div>
           </div>
         </section>`;
@@ -60,10 +64,10 @@ export async function prompt2(specs, opts={}) {
     } else if(spec.type == "text") {
       sections += `
         <section class="structuredInputSection" data-is-hidden-extra="${spec.hidden === true ? "yes" : "no"}" style="${spec.hidden === true ? "display:none" : ""};">
-          <div class="sectionLabel" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${spec.infoTooltip ? ` <span title="${sanitizeHtml(spec.infoTooltip)}" style="cursor:pointer;" onclick="alert(this.title)">ℹ️</span>` : ""}</div>
+          <div class="sectionLabel" id="${dialogId}-label-${sanitizeHtml(key)}" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label}${infoTooltipHtml(spec)}</div>
           <div style="display:flex;">
             <div style="flex-grow:1;">
-              <textarea data-initial-focus="${spec.focus === true ? "yes" : "no"}" data-spec-key="${sanitizeHtml(key)}" ${spec.height === "fit-content" ? `data-height="fit-content"` : ``} ${spec.disabled === true ? "disabled" : ""} style="width:100%; ${spec.height === "fit-content" ? "" : `height:${sanitizeHtml(spec.height)}`}; min-height:${spec.minHeight ?? "4rem"}; max-height:${spec.maxHeight ?? "50vh"}; border: 1px solid lightgrey; border-radius: 3px; padding:0.25rem; ${spec.cssText || ""};" type="text" placeholder="${sanitizeHtml(spec.placeholder)}">${sanitizeHtml(spec.defaultValue)}</textarea>
+              <textarea data-initial-focus="${spec.focus === true ? "yes" : "no"}" data-spec-key="${sanitizeHtml(key)}" aria-labelledby="${dialogId}-label-${sanitizeHtml(key)}" ${spec.height === "fit-content" ? `data-height="fit-content"` : ``} ${spec.disabled === true ? "disabled" : ""} style="width:100%; ${spec.height === "fit-content" ? "" : `height:${sanitizeHtml(spec.height)}`}; min-height:${spec.minHeight ?? "4rem"}; max-height:${spec.maxHeight ?? "50vh"}; border: 1px solid var(--input-border, lightgrey); border-radius: 3px; padding:0.25rem; ${spec.cssText || ""};" type="text" placeholder="${sanitizeHtml(spec.placeholder)}">${sanitizeHtml(spec.defaultValue)}</textarea>
             </div>
           </div>
         </section>`;
@@ -71,10 +75,10 @@ export async function prompt2(specs, opts={}) {
     } else if(spec.type == "buttons") {
       sections += `
         <section data-spec-key="${sanitizeHtml(key)}" class="structuredInputSection" data-is-hidden-extra="${spec.hidden === true ? "yes" : "no"}" style="${spec.hidden === true ? "display:none" : ""};">
-          <div class="sectionLabel" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label ?? ""}${spec.infoTooltip ? ` <span title="${sanitizeHtml(spec.infoTooltip)}" style="cursor:pointer;" onclick="alert(this.title)">ℹ️</span>` : ""}</div>
+          <div class="sectionLabel" style="${structuredSectionsI === 0 ? "margin-top:0;" : ""}">${spec.label ?? ""}${infoTooltipHtml(spec)}</div>
           <div style="display:flex;">
             <div style="flex-grow:1;">
-              ${spec.buttons.map(b => `<button ${b.disabled === true ? "disabled" : ""} style="width:100%; border: 1px solid lightgrey; border-radius: 3px; padding:0.25rem; ${b.cssText || ""};">${b.text}</button>`).join(" ")}
+              ${spec.buttons.map(b => `<button ${b.disabled === true ? "disabled" : ""} style="width:100%; border: 1px solid var(--input-border, lightgrey); border-radius: 3px; padding:0.25rem; ${b.cssText || ""};">${b.text}</button>`).join(" ")}
             </div>
           </div>
         </section>`;
@@ -89,7 +93,7 @@ export async function prompt2(specs, opts={}) {
   }
   ctn.innerHTML = `
     <div class="promptModalInnerContainer" style="background:rgba(0,0,0,0.2); position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999999; display:flex; justify-content:center; color:inherit; font:inherit; padding:0.5rem;">
-      <div style="width:600px; background:${sanitizeHtml(opts.backgroundColor)}; height: min-content; padding:1rem; border:1px solid ${opts.borderColor}; border-radius:${opts.borderRadius}; box-shadow: 0px 1px 10px 3px rgb(130 130 130 / 24%); max-height: calc(100% - 1rem);display: flex; flex-direction: column;">
+      <div role="dialog" aria-modal="true" style="width:600px; background:${sanitizeHtml(opts.backgroundColor)}; height: min-content; padding:1rem; border:1px solid ${opts.borderColor}; border-radius:${opts.borderRadius}; box-shadow: 0px 1px 10px 3px rgb(130 130 130 / 24%); max-height: calc(100% - 1rem);display: flex; flex-direction: column;">
         <div class="sectionsContainer" style="overflow:auto;">
           ${sections}
           ${Object.values(specs).find(s => s.hidden === true) ? `
@@ -110,14 +114,10 @@ export async function prompt2(specs, opts={}) {
           font-size:85%;
         }
         .promptModalInnerContainer .sectionsContainer input:invalid {
-          background-color: lightpink;
+          background-color: rgba(255, 105, 97, 0.4);
         }
         .promptModalInnerContainer .sectionsContainer {
-          -ms-overflow-style: none;  /* Internet Explorer 10+ */
-          scrollbar-width: none;  /* Firefox */
-        }
-        .promptModalInnerContainer .sectionsContainer::-webkit-scrollbar { 
-          display: none;  /* Safari and Chrome */
+          scrollbar-width: thin;  /* Firefox - keep the scrollbar visible (but subtle) so users know there's more content */
         }
         .promptModalInnerContainer .sectionsContainer.scrollFade {
           padding-bottom: 30px;
@@ -131,6 +131,16 @@ export async function prompt2(specs, opts={}) {
     </div>
   `;
   document.body.appendChild(ctn);
+
+  // toggle inline help when the ℹ️ button is clicked
+  ctn.querySelectorAll(".infoTooltipButton").forEach(btn => {
+    btn.addEventListener("click", () => {
+      let content = btn.nextElementSibling;
+      let show = content.style.display === "none";
+      content.style.display = show ? "block" : "none";
+      btn.setAttribute("aria-expanded", show ? "true" : "false");
+    });
+  });
   
   function updateFitHeights() { // settimeout to ensure rendered
     ctn.querySelectorAll("textarea[data-height=fit-content]").forEach(el => {
@@ -170,19 +180,40 @@ export async function prompt2(specs, opts={}) {
     });
   }
 
+  const previouslyFocusedEl = document.activeElement;
+
   setTimeout(() => {
     // add scrollFade if sectionsContainer has scroll
     let sectionsContainerEl = ctn.querySelector(".promptModalInnerContainer .sectionsContainer");
     if(sectionsContainerEl.scrollHeight > sectionsContainerEl.offsetHeight) {
       sectionsContainerEl.classList.add("scrollFade");
     }
-    // focus
+    // focus the requested input, or fall back to the first visible input so keyboard users start inside the dialog
     let focusEl = ctn.querySelector(".promptModalInnerContainer .sectionsContainer [data-initial-focus=yes]");
     if(focusEl) {
       focusEl.focus();
       focusEl.selectionStart = focusEl.value.length;
+    } else {
+      let firstInput = [...ctn.querySelectorAll(".sectionsContainer input, .sectionsContainer textarea, .sectionsContainer select")].find(el => el.offsetParent !== null && !el.disabled);
+      (firstInput ?? ctn.querySelector("button.submit"))?.focus();
     }
   }, 5);
+
+  // keep Tab focus inside the dialog while it's open
+  ctn.addEventListener("keydown", (e) => {
+    if(e.key !== "Tab") return;
+    const focusables = [...ctn.querySelectorAll("button, input, textarea, select, a[href], [tabindex]:not([tabindex='-1'])")].filter(el => el.offsetParent !== null && !el.disabled);
+    if(focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if(e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if(!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
 
   // a spec can have a `show` function which determines whether it's shown based on the values of the other inputs
   function updateInputVisibilies() {
@@ -251,6 +282,15 @@ export async function prompt2(specs, opts={}) {
     return values;
   }
 
+  // Escape cancels the dialog (only when it has a cancel button, so required dialogs can't be dismissed)
+  function escapeKeyHandler(e) {
+    if(e.key === "Escape" && ctn.querySelector("button.cancel")) {
+      e.stopPropagation();
+      promptResolver(null);
+    }
+  }
+  document.addEventListener("keydown", escapeKeyHandler);
+
   let values = await new Promise((resolve) => {
     promptResolver = resolve;
     ctn.querySelector("button.submit").onclick = () => {
@@ -263,7 +303,10 @@ export async function prompt2(specs, opts={}) {
       };
     }
   });
+  document.removeEventListener("keydown", escapeKeyHandler);
   ctn.remove();
+  // return focus to wherever the user was before the dialog opened
+  if(previouslyFocusedEl && typeof previouslyFocusedEl.focus === "function") previouslyFocusedEl.focus();
   return values;
 }
 prompt2.defaults = {};

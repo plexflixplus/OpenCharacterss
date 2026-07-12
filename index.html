@@ -2937,7 +2937,7 @@
         else loreBookUrlsText = "";
 
         const result = await prompt2({
-          header: { html: opts.editingExistingCharacter ? `<div style="border-radius:3px;font-size: 0.8rem;padding: 0.5rem;border: 1px solid var(--border-color);">You're currently <b>editing</b> an existing character named '${existingCharacter.name}'.</div>` : "", type:"none" },
+          header: { html: opts.editingExistingCharacter ? `<div style="border-radius:3px;font-size: 0.8rem;padding: 0.5rem;border: 1px solid var(--border-color);">You're currently <b>editing</b> an existing character named '${sanitizeHtml(existingCharacter.name)}'.</div>` : "", type:"none" },
           name: { label: "🪪 Character name:", type:"textLine", placeholder: "Sammy", defaultValue: defaultValues.name || "", validationPattern:characterNameValidationPattern },
           roleInstruction: { label: "🎭 Instruction/role/personality (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message defines the personality or 'role' that the AI will take during the chat. Every request to the API will include this as the first message. If you later decide to edit this, all existing and new threads will be immediately updated. This message does not get summarized by the summarization algorithm - it will always be present as the first message.", type:"text", height:"fit-content", placeholder: "You are Sammy, an opinionated, friendly assistant. You have opinions.", defaultValue: defaultValues.roleInstruction || "" },
           reminderMessage: { label: "💭 Reminder message - an invisible system message that is placed before every AI response (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message is inserted as a reminder at the end of the chat right before each AI response. This will always be the last/most-recent message that the AI sees when writing its response. If you later decide to edit this, all existing and new threads will be immediately updated. This message is not seen/summarized by the summarization algorithm - it will always be present as the final message.", height:"fit-content", minHeight:"3rem", type:"text", placeholder: "Stay in character! Sammy will now respond without breaking character.", defaultValue: defaultValues.reminderMessage || "" },
@@ -8525,14 +8525,16 @@
 
         let success = false;
         try {
-          if(await tryImportingDexieFile(file, options).catch(e => "fail") === "finished") {
+          if(await tryImportingDexieFile(file, options).catch(e => (console.error("tryImportingDexieFile failed:", e), "fail")) === "finished") {
             success = true;
-          } else if(await tryImportingTavernAIThreadFile(file, options).catch(e => "fail") === "finished") {
+          } else if(await tryImportingTavernAIThreadFile(file, options).catch(e => (console.error("tryImportingTavernAIThreadFile failed:", e), "fail")) === "finished") {
             success = true;
-          } else if(await tryImportingExternalCharacterFileFormat(file, options).catch(e => "fail") === "finished") {
+          } else if(await tryImportingExternalCharacterFileFormat(file, options).catch(e => (console.error("tryImportingExternalCharacterFileFormat failed:", e), "fail")) === "finished") {
             success = true;
           }
-        } catch(e) {}
+        } catch(e) {
+          console.error("Import failed:", e);
+        }
 
         loadingModal.delete();
 
