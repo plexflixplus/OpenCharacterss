@@ -30,6 +30,61 @@
 * Easily import character files and conversation data most other formats.
 * Send new feature ideas or bug reports [here](https://github.com/josephrocca/OpenCharacters/issues) or on our [Discord server](https://discord.gg/5tkWXJFqPV).
 
+## Server-side chat persistence (optional)
+
+By default all data stays in your browser's IndexedDB. If you want your chats stored **server-side** (so they survive browser data clearing and follow you between browsers/devices), serve the app with the included zero-dependency Node server:
+
+```bash
+node server.js   # then open http://localhost:3000
+```
+
+When served this way, the app automatically syncs your characters, chats, messages, memories, summaries, lore, and usage stats to the server (stored in `server-data/chats.json`) every 10 seconds, and restores them on page load in any browser that doesn't have them yet. The server copy wins if it's newer than what a given browser has seen.
+
+Notes:
+* Your `misc` settings table (which contains your OpenAI API key) is **never** sent to or stored on the server.
+* It's a single-user store with no authentication - don't expose it publicly without putting auth in front of it, since anyone who can reach the site can read/write the chats.
+* If you serve the app any other way (e.g. GitHub Pages or `python3 -m http.server`), sync silently disables itself and everything works exactly as before (browser-local storage only).
+
+## Free models (no API key) & the Perchance AI bridge
+
+When you serve the app with the included Node server (`node server.js`, or the supervisor `node daemon.js`), extra **free, no-API-key** models appear in the model dropdown under a "Free (no API key)" group:
+
+* **Pollinations** (`pollinations`) — a free, community-hosted, OpenAI-compatible endpoint (currently GPT-OSS-20B). Works out of the box; the server proxies requests to it (the provider blocks direct browser requests). Just pick it in the model dropdown and start chatting — no key required.
+* **Perchance AI** (`perchance`) — see the bridge below. Only shown once the bridge has successfully verified.
+
+These are registered automatically at startup by probing `/api/health`. If you open the app as a static file (no server), these options simply don't appear and everything else works as before.
+
+### Perchance AI bridge
+
+Perchance has **no official public API** — its AI text plugin runs on Perchance's own ad-funded GPU servers and is gated behind a Cloudflare Turnstile human check tied to a real browser session on a perchance.org page. The bridge (`perchance-bridge.js`) is the only thing that actually works: it drives a real browser (via Playwright) that loads a genuine Perchance generator, lets it pass Turnstile normally, and calls the in-page generation function, exposing the result as an OpenAI-compatible endpoint that the app proxies at `/api/perchance/*`.
+
+To enable it:
+
+```bash
+npm install playwright && npx playwright install chromium
+node daemon.js   # supervises server.js + the bridge, restarting either if it exits
+```
+
+The daemon keeps the bridge alive at all times (auto-restart with backoff), and the bridge is self-healing (re-navigates/re-launches the browser and re-verifies periodically). If there's no display it runs the browser headed under `xvfb` automatically when available.
+
+> **Important:** Cloudflare Turnstile usually **refuses to verify from datacenter/cloud IPs**. In that case the bridge reports itself "not ready", the `perchance` model is hidden, and Pollinations (which needs no verification) is used instead. Run the bridge from a **residential connection** (e.g. your own machine or a home server) for Perchance to work. Please use it responsibly — the plugin is normally ad-funded.
+
+Relevant env vars: `PERCHANCE_BRIDGE_PORT` (default 8080), `PERCHANCE_GENERATOR` (default `ai-text-plugin-tester`), `PERCHANCE_HEADLESS` (`true` to force headless), `DISABLE_PERCHANCE_BRIDGE` (`true` to skip it).
+
+## Generate a character from any web page
+
+Click **🌐 from web page** on the Characters screen, paste any URL (a Wikipedia article, a blog post, a fandom page, etc.), optionally add a hint, and the AI builds a ready-to-chat character from that page — name, personality/role instruction, greeting, and an avatar taken from the page's preview image. It defaults to a free model so it works without an API key, then drops you into the normal character editor to review and tweak before saving.
+
+The page is fetched server-side via `/api/fetch-page` (no CORS limits); if you're running the app as a static file it falls back to a direct fetch and then the configurable CORS proxy.
+
+**Bookmarklet:** you can trigger this from *any* page you're browsing. Make a bookmark whose URL is the following (replace the base URL with wherever you host OpenCharacters):
+
+```js
+javascript:(()=>{location.href='http://localhost:3000/#'+encodeURIComponent(JSON.stringify({generateCharacterFromUrl:location.href}))})()
+```
+
+Clicking it opens OpenCharacters already generating a character from the page you were on. The same `#{"generateCharacterFromUrl":"https://..."}` URL-hash command works if you construct the link yourself.
+
 ## Changelog
 
 Please see the `#announcements` channel on the [Discord server](https://discord.gg/5tkWXJFqPV) for latest updates.

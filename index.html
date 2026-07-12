@@ -34,12 +34,18 @@
         --notification-bg-color: #005ac2;
         --button-border-color: #b4b4b4;
         --button-font-size: 0.825rem;
+        --code-bg: rgb(35 35 35);
+        --code-text: rgb(232, 232, 232);
+        --input-border: lightgrey;
+        --link-color: #0044cc;
+        --error-bg: #b3261e;
+        --focus-outline: #005ac2;
       }
 
 
       /* Detect browser dark mode and change variables */
       @media (prefers-color-scheme: dark) {
-        :root {
+        :root:not(.light) {
           --background: #151515;
           --button-bg: #333;
           --button-bg-hover: #444;
@@ -49,7 +55,31 @@
           --border-color: #333;
           --avatar-bg: #333;
           --button-border-color: #515151;
+          --code-bg: #262626;
+          --code-text: #e8e8e8;
+          --input-border: #515151;
+          --link-color: #7ab4ff;
+          --error-bg: #8c1d18;
+          --focus-outline: #7ab4ff;
         }
+      }
+      /* Manual dark theme override (via the theme setting) - keep in sync with the media query block above */
+      :root.dark {
+        --background: #151515;
+        --button-bg: #333;
+        --button-bg-hover: #444;
+        --text-color: white;
+        --textarea-bg: #333;
+        --selected-thread-bg: #444;
+        --border-color: #333;
+        --avatar-bg: #333;
+        --button-border-color: #515151;
+        --code-bg: #262626;
+        --code-text: #e8e8e8;
+        --input-border: #515151;
+        --link-color: #7ab4ff;
+        --error-bg: #8c1d18;
+        --focus-outline: #7ab4ff;
       }
 
       body, html {
@@ -64,22 +94,28 @@
         font-family: inherit;
       }
       body a {
-        color: blue;
+        color: var(--link-color);
+      }
+
+      /* visible focus indicator for keyboard navigation */
+      :focus-visible {
+        outline: 2px solid var(--focus-outline);
+        outline-offset: 2px;
       }
 
       .messageText pre[data-markdown-codeblock] {
         font-family: monospace;
-        background: rgb(35 35 35);
+        background: var(--code-bg);
         padding: 0.5rem;
-        color: rgb(232, 232, 232);
+        color: var(--code-text);
         border-radius: var(--border-radius);
         overflow-x: auto;
       }
       .messageText p code {
         font-family: monospace;
-        background: rgb(35 35 35);
+        background: var(--code-bg);
         padding: 0.125rem;
-        color: rgb(232, 232, 232);
+        color: var(--code-text);
         border-radius: var(--border-radius);
       }
       .messageText table {
@@ -102,6 +138,7 @@
       }
       button:disabled {
         cursor: not-allowed;
+        opacity: 0.5;
       }
       textarea {
         background: var(--textarea-bg);
@@ -445,6 +482,39 @@
         margin-left:0.25rem;
       }
 
+      /* touch devices have no hover, so hover-revealed actions must always be visible */
+      @media (hover: none) {
+        #messageFeed .message .bottomButtons {
+          display: flex;
+        }
+        #chatThreads .thread .favStar, #chatThreads .thread .changeFolderPath {
+          display: inline;
+        }
+      }
+
+      /* comfortable touch targets for coarse pointers */
+      @media (pointer: coarse) {
+        button {
+          min-height: 2rem;
+          min-width: 2rem;
+          padding: 0.25rem;
+        }
+        .emojiButton {
+          padding: 0.375rem;
+        }
+        /* 16px inputs prevent Safari iOS from auto-zooming when an input is focused */
+        input[type="text"], select, textarea {
+          font-size: 16px;
+        }
+      }
+
+      /* narrow screens: let cards shrink to fit instead of overflowing */
+      @media (max-width: 700px) {
+        #characterList, #starterCharacterList, #characterFoldersList {
+          grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+        }
+      }
+
       /* typing indicator from https://codepen.io/arthak/pen/rmqvgo */
       .tiblock { align-items: center; display: flex; height: 17px; }
       .ticontainer{ display: inline-block; }
@@ -461,11 +531,11 @@
       <div id="leftColumn" style="display:flex; flex-direction:column; width:270px; min-width:270px; padding:0.5rem; ">
         <div style="display:flex;">
           <button id="newThreadButton" style="width:100%; cursor:pointer; min-height:2rem;">💬 new chat</button>
-          <button id="closeLeftColumnButton" style="cursor:pointer;min-height:2rem;margin-left: 0.5rem;min-width: 2rem;">☰</button>
+          <button id="closeLeftColumnButton" aria-label="Close sidebar" title="Close sidebar" style="cursor:pointer;min-height:2rem;margin-left: 0.5rem;min-width: 2rem;">☰</button>
         </div>
         <div id="threadSearchCtn" style="display:flex; width:100%; margin-top:0.5rem;">
-          <input id="threadSearchInput" style="height: 100%; flex-grow: 1; min-width: 0; padding-left: 0.5rem;" type="text" placeholder="search threads...">
-          <button id="threadSearchButton" style="cursor:pointer;min-height: 2rem;min-width: 2rem;margin-left: 0.5rem;">🔎</button>
+          <input id="threadSearchInput" aria-label="Search chats" style="height: 100%; flex-grow: 1; min-width: 0; padding-left: 0.5rem;" type="text" placeholder="search chats...">
+          <button id="threadSearchButton" aria-label="Search chats" title="Search chats" style="cursor:pointer;min-height: 2rem;min-width: 2rem;margin-left: 0.5rem;">🔎</button>
         </div>
         <!-- <div id="threadFolderNavigationBar" style="display:flex; width:100%; margin-top:0.5rem;">
           <button id="threadFolderBackButton" style="cursor:pointer;min-height: 2rem;min-width: 2rem;margin-left: 0.5rem;">🔙</button>
@@ -478,7 +548,7 @@
             <!-- <button id="statsButton" class="appOptionButton" style="margin-left: 0.5rem; width: 2rem;">📊</button> -->
           </div>
           <div style="display: flex;">
-            <button id="clearDataButton" class="appOptionButton" style="width: 4rem;">🗑️</button>
+            <button id="clearDataButton" class="appOptionButton" aria-label="Delete all data" title="Delete all data" style="width: 4rem;">🗑️</button>
             <button id="exportDataButton" class="appOptionButton" style="margin-left: 0.5rem; margin-right: 0.5rem;">💾 export</button>
             <button class="appOptionButton" style="position:relative;">📁 import<input id="importDataFileInput" style="position:absolute; top:0; left:0; right:0; bottom:0; opacity:0; cursor:pointer;" type="file"></button>
           </div>
@@ -494,6 +564,7 @@
             <h2 style="text-align:center;margin-bottom: 0.5rem;">Your Characters</h2>
             <div style="margin-bottom: 0.5rem;display: flex;justify-content: center;">
               <button id="newCharacterButton" style="padding: 0.25rem;">🆕 new character</button>
+              <button id="newCharacterFromWebPageButton" style="padding: 0.25rem; margin-left: 0.5rem;">🌐 from web page</button>
               <!-- <button id="newFolderCharacterButton" style="padding: 0.25rem; margin-left: 0.5rem;">📁 new folder</button> -->
             </div>
           </div>
@@ -560,8 +631,9 @@
       import { $, $$, delay, showEl, hideEl, prompt2, createFloatingWindow, sanitizeHtml, textToSpeech, sha256Text, dedent, downloadTextOrBlob, createGpt3Tokenizer, cosineDistance, createLoadingModal, applyObjectOverrides, objectKeysAndTypesAreValid, addBackgroundToElement, importStylesheet, htmlToElement, jsonToBlob } from "./utils.js?v=34";
 
       let JSON5;
-      (async function() {
+      const JSON5Ready = (async function() {
         JSON5 = await import('https://cdn.jsdelivr.net/npm/json5@2.2.2/dist/index.min.mjs').then(m => m.default);
+        return JSON5;
       })();
 
       // TODO: allow <style> when you work out how to scope it to the current message only - maybe just use a CSS parser and add .messageText prefix to selectors - https://github.com/jotform/css.js
@@ -572,8 +644,15 @@
       };
       DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
         if(data.attrName === "onclick") {
-          node.dataset.onClickCode = data.attrValue;
-          data.attrValue = "window.runCodeInCustomCodeIframe(this.dataset.onClickCode)";
+          // only allow message onclick handlers when the active thread's character actually has custom code
+          // (the code runs inside that character's sandboxed custom-code iframe, which the user opted into)
+          if(customCodeIframes[activeThreadId]) {
+            node.dataset.onClickCode = data.attrValue;
+            data.attrValue = "window.runCodeInCustomCodeIframe(this.dataset.onClickCode)";
+          } else {
+            data.keepAttr = false;
+            data.attrValue = "";
+          }
         }
       });
 
@@ -590,21 +669,45 @@
         renderer: markedRenderer,
       });
 
-      window.onerror = function(errorMsg, url, lineNumber, columnNumber, errorObj) {
-        alert(`Please report this error on the Discord or Github:\n\n${errorMsg}\n\nstack: ${errorObj?.stack}\n\nline: ${lineNumber}`);
-        if(errorObj?.stack.toLowerCase().includes("databaseclosederror")) {
+      // non-blocking toast notifications (replaces most alert() usage for non-fatal messages)
+      let toastTimeout = null;
+      function showToast(message, opts={}) {
+        const duration = opts.duration ?? (opts.type === "error" ? 8000 : 3000);
+        $.topNotificationContent.textContent = message;
+        $.topNotificationContent.style.background = opts.type === "error" ? "var(--error-bg)" : "var(--notification-bg-color)";
+        showEl($.topNotification);
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => hideEl($.topNotification), duration);
+      }
+      window.showToast = showToast;
 
+      // let emoji "icon buttons" (elements with role="button") be activated with Enter/Space like real buttons
+      document.addEventListener("keydown", (e) => {
+        if((e.key === "Enter" || e.key === " ") && e.target instanceof Element && e.target.matches('[role="button"]')) {
+          e.preventDefault();
+          e.target.click();
         }
+      });
+
+      // used for non-fatal API/network errors that previously interrupted the user with blocking alert() popups
+      function reportApiError(context, e) {
+        console.error(context, e);
+        if(e?.stack?.toString().toLowerCase().includes("failed to fetch")) {
+          showToast("Network error while contacting the AI API. This can happen now and then - please try again. If it happens often, please report it on GitHub or Discord (details are in the browser console).", {type:"error"});
+        } else {
+          showToast(`Error while contacting the AI API: ${e?.message ?? e} (details are in the browser console)`, {type:"error"});
+        }
+      }
+
+      window.onerror = function(errorMsg, url, lineNumber, columnNumber, errorObj) {
+        console.error("Unhandled error:", errorMsg, `line: ${lineNumber}`, errorObj);
+        showToast(`An unexpected error occurred: ${errorMsg} — please report this on the Discord or GitHub (full details are in the browser console).`, {type:"error"});
         return false;
       }
 
       if(!window.isSecureContext) {
         alert("Hey, looks like you're trying to host this locally, but you have hosted it in an insecure context - i.e. you're serving it on HTTP instead of HTTPS. Unfortunately there are a bunch of features that are disabled on HTTP connections for modern browsers. localhost is treated as a secure context for development purposes, but if you want to server it on the internet, then I recommend using Cloudflare - you just switch your domain's nameservers to them and then it's basically a button click and you've got HTTPS. Much easier than setting up your own certificate stuff.");
       }
-
-      $.messageFeed.addEventListener("keydown", async function(e) {
-        debugger;
-      });
 
       // polyfill for navigator.userActivation
       if(!navigator.userActivation) {
@@ -660,11 +763,15 @@
 
       // TODO: improve this heuristic. this isn't just about screen width - it's also about touch screens (no pointer hover events).
       // ALSO: This is a bit of a misnomer. It's used for stuff like determining how to show the right column, which is really about screen width, not mobile/touchscreen stuff.
-      const isMobile = window.innerWidth < 700;
+      let isMobile = window.innerWidth < 700;
 
-      if(isMobile) {
-        document.body.classList.add("isMobile"); // to use in CSS selectors
-      }
+      document.body.classList.toggle("isMobile", isMobile); // to use in CSS selectors
+
+      // keep the layout mode up to date when the window is resized or the device is rotated
+      window.matchMedia("(max-width: 699px)").addEventListener("change", (e) => {
+        isMobile = e.matches;
+        document.body.classList.toggle("isMobile", isMobile);
+      });
       
       function openLeftColumn() {
         showEl($.leftColumn);
@@ -881,6 +988,88 @@
       if(dbLoadingModal) dbLoadingModal.delete();
 
       console.log("Database ready.");
+
+      // ===== Server-side chat persistence (optional) =====
+      // If the site is served by server.js (see repo root), chats are automatically persisted
+      // server-side via /api/sync, so they survive browser data clearing and are available from
+      // any browser that visits the site. If no sync server is detected (e.g. GitHub Pages),
+      // everything keeps working exactly as before, with chats stored locally in IndexedDB only.
+      //
+      // The `misc` table (API key + personal settings) is intentionally NEVER synced to the server.
+      const serverSyncTables = ["characters", "threads", "messages", "summaries", "memories", "lore", "usageStats"];
+      let serverSyncLastHash = null;
+      let serverSyncSaveInFlight = false;
+
+      async function serializeSyncedTables() {
+        const data = {};
+        for(const tableName of serverSyncTables) {
+          data[tableName] = await db.table(tableName).toArray();
+        }
+        return data;
+      }
+
+      async function importServerChatData(data) {
+        await db.transaction("rw", serverSyncTables.map(t => db.table(t)), async () => {
+          for(const tableName of serverSyncTables) {
+            await db.table(tableName).clear();
+            if(Array.isArray(data[tableName]) && data[tableName].length > 0) {
+              await db.table(tableName).bulkPut(data[tableName]);
+            }
+          }
+        });
+      }
+
+      async function saveChatsToServer() {
+        if(serverSyncSaveInFlight) return;
+        serverSyncSaveInFlight = true;
+        try {
+          const json = JSON.stringify({data: await serializeSyncedTables()});
+          const hash = await sha256Text(json);
+          if(hash === serverSyncLastHash) return; // nothing changed since last save
+          const response = await fetch("/api/sync", {method:"PUT", headers:{"content-type":"application/json"}, body:json});
+          if(!response.ok) throw new Error("HTTP "+response.status);
+          const result = await response.json();
+          serverSyncLastHash = hash;
+          await db.misc.put({key:"serverSyncMarker", value:{savedAt:result.savedAt, version:result.version}});
+        } catch(e) {
+          console.warn("Server-side chat save failed (will retry on the next change):", e);
+        } finally {
+          serverSyncSaveInFlight = false;
+        }
+      }
+
+      try {
+        const store = await fetch("/api/sync").then(r => r.ok && r.headers.get("content-type")?.includes("json") ? r.json() : null).catch(() => null);
+        if(store !== null && typeof store === "object" && "version" in store) {
+          const localMarker = (await db.misc.get("serverSyncMarker"))?.value;
+          if(store.data && store.savedAt && store.savedAt !== localMarker?.savedAt) {
+            // the server has a copy of the chats that this browser hasn't seen yet (saved from another
+            // browser/device, or this browser's local data was cleared) - restore it. Server copy wins.
+            console.log("Restoring chats from server (saved at " + new Date(store.savedAt).toISOString() + ")...");
+            const localHasData = (await db.threads.count()) > 0 || (await db.characters.count()) > 0;
+            if(localHasData) console.warn("Replacing this browser's local chat data with the server-side copy.");
+            await importServerChatData(store.data);
+            await db.misc.put({key:"serverSyncMarker", value:{savedAt:store.savedAt, version:store.version}});
+            serverSyncLastHash = await sha256Text(JSON.stringify({data: store.data}));
+            console.log("Chats restored from server.");
+          } else if(!store.data) {
+            // fresh server with no data yet - push whatever this browser has
+            await saveChatsToServer();
+          } else {
+            // in sync with the server - use the server copy as the change-detection baseline so any
+            // local changes made since (e.g. while offline) get pushed on the first save tick
+            serverSyncLastHash = await sha256Text(JSON.stringify({data: store.data}));
+          }
+          setInterval(saveChatsToServer, 10_000); // persist any changes every 10s
+          window.addEventListener("pagehide", () => { saveChatsToServer(); });
+          console.log("Server-side chat persistence is enabled.");
+        } else {
+          console.log("No sync server detected - chats are stored locally in this browser only.");
+        }
+      } catch(e) {
+        console.warn("Server-side chat persistence disabled due to an error:", e);
+      }
+      // ===== End server-side chat persistence =====
 
       function upgradeCharacterInitialMessagesArrayIfNeeded(character) {
         // upgrade from the ["foo", "bar"] format to [{author:"user", content:"foo"}, {author:"ai", content:"bar"}]
@@ -1118,24 +1307,50 @@
       window.db = db;
 
 
+      // The CORS proxy is used to fetch lore files and to let custom code make arbitrary web requests.
+      // It's user-configurable (see advanced settings) so the app keeps working if the default proxy goes down.
+      // Code for the default proxy server is here: https://replit.com/@joe64/opencharacters-cors-proxy (now hosted on Glitch)
+      const defaultCorsProxyUrl = "https://opencharacters-cors-proxy.glitch.me";
+      let corsProxyUrl = (await db.misc.get("corsProxyUrl"))?.value || defaultCorsProxyUrl;
+
+      // theme: "system" (default) follows prefers-color-scheme; "light"/"dark" force a theme via a class on <html>
+      function applyTheme(theme) {
+        document.documentElement.classList.toggle("light", theme === "light");
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      }
+      let themePreference = (await db.misc.get("themePreference"))?.value || "system";
+      applyTheme(themePreference);
+      function corsProxiedUrl(url) {
+        return corsProxyUrl.replace(/\/+$/, "") + "/?url=" + encodeURIComponent(url);
+      }
+
       let availableModels = {};
 
       // for openai and webgpu/webnn models (i.e. you don't need to setup your own inference server, and most people already have an openai account):
+      // note: tokenPricing is per 1000 tokens (USD), and is an estimate only - check https://openai.com/pricing for current prices
+      //
+      // model object fields of note:
+      //  - apiKey: "<OPENAI>" means "use the user's saved OpenAI key"; null means "no key needed" (free/keyless models); a string is sent as-is
+      //  - payloadModelName: the value put in the request body's `model` field, if it differs from the app-facing `name` (lets us give friendly names)
+      //  - free: true => shown in the "Free (no API key)" group of the model dropdowns, and never triggers the OpenAI-key prompt
+      //  - group: optional dropdown group label (defaults are derived from `free`/endpoint if not set)
       let broadlyAvailableModels = [
-        {name:"gpt-3.5-turbo", shortLabel:"gpt-3.5-turbo - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
-        {name:"gpt-3.5-turbo-16k", shortLabel:"gpt-3.5-turbo-16k - 4x longer memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:16384, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
-        {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        // {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - more controllable", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        {name:"gpt-4-turbo-32k", shortLabel:"gpt-4-turbo - excellent, 4x longer memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:32768, type:"chat-completion", tokenPricing:{prompt: 0.01, completion: 0.03}},
-        {name:"gpt-4", shortLabel:"gpt-4 - excellent, 2x longer memory, expensive", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"chat-completion", tokenPricing:{prompt: 0.03, completion: 0.06}},
-        {name:"text-davinci-003", shortLabel:"text-davinci-003 - creative/expensive, DEPRECATED Jan 2024", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.02, completion: 0.02}},
-        {name:"gpt-3.5-turbo-0301", shortLabel:"gpt-3.5-turbo-0301, old/DEPRECATED June 2024", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
-        {name:"text-embedding-ada-002", shortLabel:"text-embedding-ada-002", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"text-embedding", tokenPricing:{prompt:0.0004, completion: 0.0004}},
+        // ===== OpenAI models (need an API key) =====
+        // (Free, no-API-key models like Pollinations and Perchance are registered dynamically at
+        //  startup by detectServerModelProviders() below - they're routed through the local server's
+        //  proxy because those providers block direct browser requests. See server.js.)
+        {name:"gpt-4o-mini", shortLabel:"gpt-4o-mini - good/fast/cheap", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.00015, completion: 0.0006}},
+        {name:"gpt-4o", shortLabel:"gpt-4o - excellent, long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:128000, type:"chat-completion", tokenPricing:{prompt: 0.0025, completion: 0.01}},
+        {name:"gpt-4.1", shortLabel:"gpt-4.1 - excellent, very long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:1000000, type:"chat-completion", tokenPricing:{prompt: 0.002, completion: 0.008}},
+        {name:"gpt-4.1-mini", shortLabel:"gpt-4.1-mini - good/fast/cheap, very long memory", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:1000000, type:"chat-completion", tokenPricing:{prompt: 0.0004, completion: 0.0016}},
+        {name:"gpt-3.5-turbo", shortLabel:"gpt-3.5-turbo - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
+        {name:"gpt-3.5-turbo-16k", shortLabel:"gpt-3.5-turbo-16k - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:16384, type:"chat-completion", tokenPricing:{prompt: 0.001, completion: 0.002}},
+        {name:"gpt-3.5-turbo-instruct", shortLabel:"gpt-3.5-turbo-instruct - legacy completion model", endpointUrl:"https://api.openai.com/v1/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
+        {name:"gpt-4-turbo-32k", shortLabel:"gpt-4-turbo-32k - legacy", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:32768, type:"chat-completion", tokenPricing:{prompt: 0.01, completion: 0.03}},
+        {name:"gpt-4", shortLabel:"gpt-4 - legacy, expensive", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"chat-completion", tokenPricing:{prompt: 0.03, completion: 0.06}},
+        {name:"gpt-3.5-turbo-0301", shortLabel:"gpt-3.5-turbo-0301 - legacy/DEPRECATED", endpointUrl:"https://api.openai.com/v1/chat/completions", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:4096, type:"chat-completion", tokenPricing:{prompt: 0.0015, completion: 0.002}},
+        {name:"text-embedding-ada-002", shortLabel:"text-embedding-ada-002", endpointUrl:"https://api.openai.com/v1/embeddings", modelUrl:null, apiKey:"<OPENAI>", maxSequenceLength:8192, type:"text-embedding", tokenPricing:{prompt:0.0004, completion: 0.0004}},
       ];
-
-      if(Date.now() > new Date("2024-01-04").getTime()) {
-        broadlyAvailableModels = broadlyAvailableModels.filter(m => m.name !== "text-davinci-003");
-      }
       
       async function updateModelList() {
         // console.log("updateModelList");
@@ -1148,17 +1363,82 @@
           availableModels[m.name] = m;
         }
         // console.log("updateModelList", availableModels);
-        let currentValue = $.threadModelSelector;
-        $.threadModelSelector.innerHTML = modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => `<option value="${m.name}" ${m.name === currentValue ? "selected" : ""}>${m.name}</option>`).join("");
+        let currentValue = $.threadModelSelector.value;
+        let selectableModels = modelsArr.filter(m => m.type === "completion" || m.type === "chat-completion");
+        // group the models in the dropdown so free/OpenAI/custom options are easy to tell apart:
+        function groupFor(m) {
+          if(m.group) return m.group;
+          if(m.free) return "Free (no API key)";
+          if(m.endpointUrl.startsWith("https://api.openai.com")) return "OpenAI (needs API key)";
+          return "Custom / other";
+        }
+        let groupOrder = [];
+        let modelsByGroup = {};
+        for(let m of selectableModels) {
+          let g = groupFor(m);
+          if(!modelsByGroup[g]) { modelsByGroup[g] = []; groupOrder.push(g); }
+          modelsByGroup[g].push(m);
+        }
+        $.threadModelSelector.innerHTML = groupOrder.map(g => `<optgroup label="${sanitizeHtml(g)}">` + modelsByGroup[g].map(m => `<option value="${sanitizeHtml(m.name)}" ${m.name === currentValue ? "selected" : ""}>${sanitizeHtml(m.shortLabel || m.name)}</option>`).join("") + `</optgroup>`).join("");
       }
       updateModelList();
+
+      // Detect optional server-side model providers and register them as selectable models.
+      // The free providers (Pollinations, Perchance) block direct browser requests, so they're
+      // routed through the local server's proxy. This is all best-effort: if the app is opened
+      // as a static file (no server), or a provider isn't verified/available, we just don't show
+      // that model - the user can always use their OpenAI key or a custom model instead.
+      let serverModelProvidersReady = (async function detectServerModelProviders() {
+        let serverPresent = false;
+        try {
+          let health = await fetch("/api/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+          serverPresent = !!(health && health.ok);
+        } catch(e) {}
+
+        let added = false;
+        if(serverPresent) {
+          // Pollinations - free, no API key, proxied server-side to avoid browser-origin blocks
+          if(!broadlyAvailableModels.some(m => m.name === "pollinations")) {
+            broadlyAvailableModels.push({
+              name: "pollinations",
+              shortLabel: "🆓 Pollinations (GPT-OSS-20B) - free, no API key",
+              payloadModelName: "openai",
+              endpointUrl: location.origin + "/api/llm-proxy?target=" + encodeURIComponent("https://text.pollinations.ai/openai"),
+              modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
+              maxSequenceLength: 8000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
+            });
+            added = true;
+          }
+          // Perchance - only if the bridge has actually verified (produced text) at least once
+          try {
+            let ph = await fetch("/api/perchance/health", {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+            if(ph && ph.ready && !broadlyAvailableModels.some(m => m.name === "perchance")) {
+              broadlyAvailableModels.push({
+                name: "perchance",
+                shortLabel: "🆓 Perchance AI - free, no API key (via bridge)",
+                endpointUrl: location.origin + "/api/perchance/v1/chat/completions",
+                modelUrl: null, apiKey: null, free: true, group: "Free (no API key)",
+                maxSequenceLength: 6000, type: "chat-completion", tokenPricing: {prompt: 0, completion: 0},
+              });
+              added = true;
+              console.log("Perchance AI bridge is verified - the 'perchance' free model is available.");
+            } else if(!ph || !ph.ready) {
+              console.log("Perchance AI bridge not verified yet - the 'perchance' model won't be shown (normal on cloud/datacenter IPs where Cloudflare Turnstile refuses to verify).");
+            }
+          } catch(e) {}
+          if(added) await updateModelList();
+        } else {
+          console.log("No OpenCharacters server detected - free proxied models (Pollinations/Perchance) are unavailable. Use an OpenAI key or a custom model.");
+        }
+      })();
 
 
       // export data if they click export button
       $.exportDataButton.addEventListener("click", async function() {
         // choose export options
         let result = await prompt2({
-          exportUserData: {label: "Export user settings? (API key, avatar, name)", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}]},
+          exportUserData: {label: "Export user settings? (avatar, name)", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}], defaultValue: "no"},
+          exportApiKey: {label: "Include your OpenAI API secret key in the export? Only choose 'Yes' if you're keeping this file private - anyone with your key can spend your API credits.", type: "select", options:[{value: "no", content: "No (recommended)"}, {value: "yes", content: "Yes"}], defaultValue: "no", show:(data) => data.exportUserData==="yes"},
           exportType: {label: "Export type", type: "select", options:[{content: "All characters and chats", value:"allCharactersAndThreads"}, {content: "All characters, no chats", value:"allCharactersNoThreads"}, {content: "Specific characters", value:"specificCharacters"}, {content: "Specific chats", value:"specificThreads"}]},
           exportThreadIds: {show:(data) => data.exportType==="specificThreads", label: "Chat IDs to export (comma-separated numbers). Chat IDs are shown in bottom-right of each chat card in the side bar. The characters associated with these chats will be exported too.", type: "textLine", defaultValue: "", placeholder:"23,45,67"},
           exportCharacterIds: {show:(data) => data.exportType==="specificCharacters", label: "Character IDs to export (comma-separated numbers). Character IDs are shown next to the character name.", type: "textLine", defaultValue: "", placeholder:"3,12,7,14"},
@@ -1222,6 +1502,10 @@
         
         if(result.exportUserData === "no") {
           json.data.data.find(d => d.tableName === "misc").rows = [];
+        }
+        // never include the API key unless the user explicitly opted in
+        if(result.exportApiKey !== "yes") {
+          json.data.data.find(d => d.tableName === "misc").rows = json.data.data.find(d => d.tableName === "misc").rows.filter(r => r.key !== "openAiApiKey");
         }
         // remove datesApplicationWasUsedInThisBrowser because it's browser-specific 
         json.data.data.find(d => d.tableName === "misc").rows = json.data.data.find(d => d.tableName === "misc").rows.filter(r => r.key !== "datesApplicationWasUsedInThisBrowser");
@@ -1312,13 +1596,13 @@
           let q = opts.filterWithQuery.toLowerCase();
           // iterate over all threads, and all messages in each thread, and tally query "hits" for the threads
           for(let thread of threads) {
+            if(opts.searchStillCurrent && !opts.searchStillCurrent()) return; // a newer search has started - abandon this one
             thread.queryHits = 0;
-            const messages = await db.messages.where("threadId").equals(thread.id).toArray();
-            for(let message of messages) {
-              if(message.message.toLowerCase().includes(q)) {
-                thread.queryHits++;
-              }
+            if(thread.name.toLowerCase().includes(q) || thread.character.name.toLowerCase().includes(q)) {
+              thread.queryHits++;
             }
+            // count matching messages without materializing the full message objects into an array
+            thread.queryHits += await db.messages.where("threadId").equals(thread.id).filter(m => m.message.toLowerCase().includes(q)).count();
           }
           // sort and filter
           threads.sort((a,b) => b.queryHits - a.queryHits);
@@ -1380,8 +1664,8 @@
           }
           return `
             <div class="thread" data-thread-id="${sanitizeHtml(thread.id)}">
-              <span class="favStar" data-is-fav="${thread.isFav}">⭐</span>
-              <span class="changeFolderPath">📁</span>
+              <span class="favStar" data-is-fav="${thread.isFav}" role="button" tabindex="0" aria-label="Favorite this chat" title="Favorite this chat">⭐</span>
+              <span class="changeFolderPath" role="button" tabindex="0" aria-label="Move chat to folder" title="Move chat to folder">📁</span>
               <div class="avatar" style="${avatarUrl ? `background-image:url(${sanitizeHtml(avatarUrl)})` : ""}; border:1px solid var(--border-color);"></div>
               <div class="info" style="flex-grow:1; padding-left:0.5rem;">
                 <div class="nameWrapper" style="font-weight:bold; font-size:0.8rem;"><span class="name" title="${sanitizeHtml(thread.name)}">${sanitizeHtml(thread.name)}</span></div>
@@ -1389,9 +1673,9 @@
                 <div style="font-size:0.8rem; opacity:0.5; padding-right:0.5rem; display:flex; justify-content:space-between;"><span style="font-size:0.65rem;" title="${sanitizeHtml(thread.modelName)}">${thread.modelName.length > 13 ? sanitizeHtml(thread.modelName.slice(0, 13))+"…" : sanitizeHtml(thread.modelName)}</span><span class="usageStatsSpend" title="API usage/spend" style="font-size:0.65rem;display:flex;align-items:center;">$${threadIdToMoneySpent[thread.id].toFixed(2)}</span><span style="font-size:0.65rem; display:flex; align-items:center; filter:grayscale(1);" title="Thread ID">🧵#${sanitizeHtml(thread.id)}</span></div>
               </div>
               <div style="display:flex; flex-direction:column; justify-content:space-between; font-size:0.65rem;">
-                <span class="button nameEditButton">✏️</span>
-                <span class="button exportButton">💾</span>
-                <span class="button deleteButton">🗑️</span>
+                <span class="button nameEditButton" role="button" tabindex="0" aria-label="Rename chat" title="Rename chat">✏️</span>
+                <span class="button exportButton" role="button" tabindex="0" aria-label="Export chat" title="Export chat">💾</span>
+                <span class="button deleteButton" role="button" tabindex="0" aria-label="Delete chat" title="Delete chat">🗑️</span>
               </div>
             </div>`;
         }).join("");
@@ -1684,9 +1968,10 @@
         //   }
         // }
 
-        // get message feed scroll position:
-        // let originalScrollPosition = $.messageFeed.scrollTop;
-        
+        // get message feed scroll position (so we can restore it on partial re-renders instead of yanking the user to the bottom):
+        let originalScrollPosition = $.messageFeed.scrollTop;
+        let wasNearBottom = messageFeedIsNearBottom();
+
         let messagesWeNeedToAdd = displayedMessages.slice(0);
 
         // shift messages off `messagesWeNeedToAdd` until we find one that doesn't *exactly* match the same-index element that is already in the feed
@@ -1732,15 +2017,13 @@
           attachEventHandlersToMessageEl(messageEl);
         });
 
-        // if(previouslyRenderedMessageFeedThreadId === threadId) {
-        //   // restore message feed scroll position:
-        //   $.messageFeed.scrollTop = originalScrollPosition;
-        // } else {
-        //   // scroll to bottom of feed
-        //   $.messageFeed.scrollTop = $.messageFeed.scrollHeight;
-        // }
-
-        $.messageFeed.scrollTop = $.messageFeed.scrollHeight
+        if(previouslyRenderedMessageFeedThreadId === threadId && !wasNearBottom) {
+          // the user was scrolled up reading history in this same thread - keep their place:
+          $.messageFeed.scrollTop = originalScrollPosition;
+        } else {
+          // new thread, or the user was already near the bottom - scroll to the newest message:
+          $.messageFeed.scrollTop = $.messageFeed.scrollHeight;
+        }
         
         if(displayedMessages.length === 0) {
           showEl($.noMessagesNotice);
@@ -2404,8 +2687,7 @@
             });
             const url = `${window.location.origin+window.location.pathname}#${urlHashData}`;
             await navigator.clipboard.writeText(url);
-            $.topNotificationContent.innerHTML = `Copied character link to clipboard!`;
-            showEl($.topNotification);
+            showToast(`Copied character link to clipboard!`);
 
             if(warnThatAvatarUrlWasRemoved) {
               await new Promise(resolve => setTimeout(resolve, 1000));
@@ -2417,8 +2699,6 @@
                 window.open(blobUrl, "_blank");
               }
             }
-
-            setTimeout(() => hideEl($.topNotification), 3000);
           });
 
           // edit character details if they click the edit button
@@ -2478,6 +2758,167 @@
         const character = await addCharacter(result);
         await createNewThreadWithCharacterId(character.id);
       });
+
+      // ===== Generate a character from any web page =====
+
+      // Fetch a web page's HTML. Tries the server-side helper first (no CORS limits),
+      // then a direct browser fetch, then the configurable CORS proxy - so it works
+      // whether the app is served by server.js or opened as a static file.
+      async function fetchWebPageHtml(url) {
+        // 1) server-side helper (best - avoids CORS entirely)
+        try {
+          let r = await fetch("/api/fetch-page?url=" + encodeURIComponent(url));
+          if(r.ok) {
+            let json = await r.json();
+            if(json?.ok && json.html) return {html: json.html, finalUrl: json.url || url};
+          }
+        } catch(e) { /* server helper not available - fall through */ }
+        // 2) direct fetch
+        try {
+          let r = await fetch(url);
+          if(r.ok) return {html: await r.text(), finalUrl: r.url || url};
+        } catch(e) { /* CORS or network - fall through */ }
+        // 3) CORS proxy
+        let r = await fetch(corsProxiedUrl(url));
+        if(!r.ok) throw new Error("could not fetch the page (status " + r.status + ")");
+        return {html: await r.text(), finalUrl: url};
+      }
+
+      // Extract a title, an og:image (used as avatar), and readable text from raw HTML.
+      function extractReadableContentFromHtml(html, baseUrl) {
+        let doc;
+        try {
+          doc = new DOMParser().parseFromString(html, "text/html");
+        } catch(e) {
+          return {title: "", imageUrl: "", text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()};
+        }
+        // remove noise:
+        doc.querySelectorAll("script, style, noscript, svg, iframe, nav, footer, header, aside, form, template").forEach(el => el.remove());
+
+        let title = (doc.querySelector("title")?.textContent || "").trim();
+        let ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute("content");
+        if(ogTitle) title = ogTitle.trim();
+
+        let metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute("content")
+          || doc.querySelector('meta[property="og:description"]')?.getAttribute("content") || "";
+
+        let imageUrl = doc.querySelector('meta[property="og:image"]')?.getAttribute("content")
+          || doc.querySelector('meta[name="twitter:image"]')?.getAttribute("content") || "";
+        if(imageUrl && baseUrl) {
+          try { imageUrl = new URL(imageUrl, baseUrl).href; } catch(e) {}
+        }
+
+        // prefer main/article content if present:
+        let contentRoot = doc.querySelector("main, article") || doc.body || doc.documentElement;
+        let bodyText = (contentRoot?.textContent || "").replace(/\s+/g, " ").trim();
+
+        let text = [title, metaDesc, bodyText].filter(t => t).join("\n\n");
+        return {title, imageUrl, text};
+      }
+
+      // pick a sensible default model for generation (prefer a free/no-key model so this works without an API key)
+      function defaultGenerationModelName() {
+        let freeModel = broadlyAvailableModels.find(m => m.free && (m.type === "chat-completion" || m.type === "completion"));
+        if(freeModel) return freeModel.name;
+        return "gpt-4o-mini";
+      }
+
+      async function generateCharacterFromWebPage({url, hint, modelName}) {
+        let loadingModal = createLoadingModal("Reading the web page...");
+        try {
+          let {html, finalUrl} = await fetchWebPageHtml(url);
+          let {title, imageUrl, text} = extractReadableContentFromHtml(html, finalUrl);
+          if(!text || text.length < 40) throw new Error("couldn't extract meaningful text from that page");
+
+          // trim the page text so the prompt comfortably fits the model's context:
+          let modelObj = availableModels[modelName];
+          let maxContext = modelObj?.maxSequenceLength || 6000;
+          let charBudget = Math.min(text.length, Math.max(2000, (maxContext - 1200) * 3)); // ~3 chars/token, leave room for reply+instructions
+          let pageText = text.slice(0, charBudget);
+
+          loadingModal.updateContent("Generating character with the AI...");
+
+          let instruction = `You are helping create a role-play chat character based on a web page.\n\n`
+            + `WEB PAGE TITLE: ${title || "(none)"}\n`
+            + `WEB PAGE URL: ${finalUrl}\n`
+            + (hint ? `USER GUIDANCE: ${hint}\n` : "")
+            + `\nWEB PAGE CONTENT (may be truncated):\n"""\n${pageText}\n"""\n\n`
+            + `Create a chat character inspired by this page. Reply with ONLY a JSON object (no markdown, no commentary) of exactly this shape:\n`
+            + `{\n`
+            + `  "name": "short character name",\n`
+            + `  "roleInstruction": "a detailed system/role instruction written in second person (\\"You are ...\\") describing who the character is, their personality, knowledge and how they speak, grounded in the web page",\n`
+            + `  "reminderMessage": "a short reminder that keeps the AI in character",\n`
+            + `  "greeting": "the character's first message to the user"\n`
+            + `}`;
+
+          let responseText = await getChatCompletion({
+            messages: [{role:"user", content:instruction}],
+            modelName,
+            temperature: 0.7,
+          });
+          if(!responseText) throw new Error("the AI didn't return anything");
+
+          // the model may wrap JSON in a code fence or add stray text - extract the JSON object:
+          let jsonText = responseText.trim();
+          let fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+          if(fenceMatch) jsonText = fenceMatch[1].trim();
+          else {
+            let braceStart = jsonText.indexOf("{");
+            let braceEnd = jsonText.lastIndexOf("}");
+            if(braceStart !== -1 && braceEnd !== -1) jsonText = jsonText.slice(braceStart, braceEnd + 1);
+          }
+
+          await JSON5Ready;
+          let parsed;
+          try { parsed = JSON5.parse(jsonText); }
+          catch(e) { throw new Error("the AI's response wasn't valid JSON - please try again.\n\n" + responseText.slice(0, 300)); }
+
+          let character = {
+            name: (parsed.name || title || "Web Character").toString().slice(0, 60),
+            roleInstruction: (parsed.roleInstruction || "").toString(),
+            reminderMessage: (parsed.reminderMessage || "").toString(),
+            avatar: {url: imageUrl || ""},
+            modelName,
+          };
+          if(parsed.greeting) {
+            character.initialMessages = [{author:"ai", content: parsed.greeting.toString()}];
+          }
+          return character;
+        } finally {
+          loadingModal.delete();
+        }
+      }
+
+      async function promptAndGenerateCharacterFromWebPage(defaultUrl="") {
+        try { await serverModelProvidersReady; } catch(e) {} // make sure free models are registered before we build the dropdown
+        let chatModels = broadlyAvailableModels.filter(m => m.type === "chat-completion" || m.type === "completion");
+        let modelOptions = chatModels.map(m => ({value:m.name, content:m.shortLabel || m.name}));
+        let promptResult = await prompt2({
+          url: {label: "🌐 Web page URL to build a character from:", type:"textLine", placeholder:"https://en.wikipedia.org/wiki/Ada_Lovelace", defaultValue: defaultUrl, focus:true},
+          hint: {label: "Optional guidance (tone, which person/thing to become, etc.):", type:"textLine", placeholder:"(optional) e.g. make them witty and speak in the first person"},
+          modelName: {label: "🤖 Model to generate with:", infoTooltip:"A free model is selected by default so this works without an API key.", type:"select", options: modelOptions, defaultValue: defaultGenerationModelName()},
+        }, {submitButtonText: "Generate character"});
+        if(!promptResult) return;
+        if(!promptResult.url || !/^https?:\/\//i.test(promptResult.url.trim())) {
+          showToast("Please enter a valid http(s):// URL.", {type:"error"});
+          return;
+        }
+        let character;
+        try {
+          character = await generateCharacterFromWebPage({url: promptResult.url.trim(), hint: promptResult.hint?.trim(), modelName: promptResult.modelName});
+        } catch(e) {
+          console.error("generateCharacterFromWebPage error:", e);
+          showToast("Couldn't generate a character from that page: " + e.message, {type:"error", duration:9000});
+          return;
+        }
+        // hand off to the normal character editor so the user can review/tweak before saving:
+        let result = await characterDetailsPrompt(character, {submitButtonText: "add character"});
+        if(!result) return;
+        let newCharacter = await addCharacter(result);
+        await createNewThreadWithCharacterId(newCharacter.id);
+      }
+
+      $.newCharacterFromWebPageButton.addEventListener("click", () => promptAndGenerateCharacterFromWebPage());
 
       // $.newFolderCharacterButton.addEventListener("click", async function() {
       //   let folderName = prompt("Folder name:");
@@ -2814,13 +3255,13 @@
         else loreBookUrlsText = "";
 
         const result = await prompt2({
-          header: { html: opts.editingExistingCharacter ? `<div style="border-radius:3px;font-size: 0.8rem;padding: 0.5rem;border: 1px solid var(--border-color);">You're currently <b>editing</b> an existing character named '${existingCharacter.name}'.</div>` : "", type:"none" },
+          header: { html: opts.editingExistingCharacter ? `<div style="border-radius:3px;font-size: 0.8rem;padding: 0.5rem;border: 1px solid var(--border-color);">You're currently <b>editing</b> an existing character named '${sanitizeHtml(existingCharacter.name)}'.</div>` : "", type:"none" },
           name: { label: "🪪 Character name:", type:"textLine", placeholder: "Sammy", defaultValue: defaultValues.name || "", validationPattern:characterNameValidationPattern },
           roleInstruction: { label: "🎭 Instruction/role/personality (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message defines the personality or 'role' that the AI will take during the chat. Every request to the API will include this as the first message. If you later decide to edit this, all existing and new threads will be immediately updated. This message does not get summarized by the summarization algorithm - it will always be present as the first message.", type:"text", height:"fit-content", placeholder: "You are Sammy, an opinionated, friendly assistant. You have opinions.", defaultValue: defaultValues.roleInstruction || "" },
           reminderMessage: { label: "💭 Reminder message - an invisible system message that is placed before every AI response (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/instruction-and-reminder.md' target='_blank'>advanced</a>)", infoTooltip:"This message is inserted as a reminder at the end of the chat right before each AI response. This will always be the last/most-recent message that the AI sees when writing its response. If you later decide to edit this, all existing and new threads will be immediately updated. This message is not seen/summarized by the summarization algorithm - it will always be present as the final message.", height:"fit-content", minHeight:"3rem", type:"text", placeholder: "Stay in character! Sammy will now respond without breaking character.", defaultValue: defaultValues.reminderMessage || "" },
           initialMessagesText: { label: `💬 Initial chat messages (optional). Useful for extra alignment to character. Follow the format explained <a href="https://github.com/josephrocca/OpenCharacters/blob/main/docs/initial-messages.md" target='blank'>here</a>.`, infoTooltip:"During the initialization of every new thread with this character, these messages will be created and placed at the start of the thread. Note that the summarization algorithm will eventually summarize these messages - so they won't stay around forever (unlike the instruction and reminder messages, which *do* stay around forever). Also note that if you edit the initial messages, only *new* threads will have the updated initial messages. In other words, once a chat thread has been created, the initial messages that are added to a thread during init 'belong' to that thread, not to the character.", type:"text", height:"fit-content", placeholder: "[USER]: Hey Sammy, do you have opinions?\n[SYSTEM]: The next message will include an emoji.\n[AI]: Yes! I have lots of opinions. 🤔\n[SYSTEM; hiddenFrom=ai]: The AI can't see this message. Useful for user instructions.", defaultValue: initialMessagesText ?? "" },
           avatarUrl: { label: "👤 Avatar URL (png/jpg/etc):", type:"textLine", placeholder: "(optional)", defaultValue: defaultValues.avatar?.url || "" },
-          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"GPT-4 is really smart, but expensive (about 15x price of gpt-3.5-turbo). If you use gpt-3.5-turbo and set the 'temperature' option (see advanced settings) to 1, then apparently (according to community members) it's pretty close to DaVinci in terms of creativity and overall quality. DaVinci is overpriced given its performance - GPT-4 is significantly better and only ~1.5x the price.", type:"select", options:[{content:"GOOD/CHEAP (currently: gpt-3.5-turbo)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4)", value:"great"}, ...broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => ({value:m.name, content:m.shortLabel}))], defaultValue: defaultValues.modelName || "good" },
+          modelName: { hidden:true, label: "🤖 Model name:", infoTooltip:"'GOOD/CHEAP' and 'GREAT/EXPENSIVE' automatically map to a sensible current model, so they're the safest choices if you want your character to keep working as models come and go. You can also pick a specific model, or add your own via the custom model configs in the main settings.", type:"select", options:[{content:"GOOD/CHEAP (currently: gpt-4o-mini)", value:"good"}, {content:"GREAT/EXPENSIVE (currently: gpt-4o)", value:"great"}, ...broadlyAvailableModels.filter(m => m.type === "completion" || m.type === "chat-completion").map(m => ({value:m.name, content:m.shortLabel}))], defaultValue: defaultValues.modelName || "good" },
           maxTokensPerMessage: { hidden:true, label: "📏 Max tokens per message:", infoTooltip:"This can be used to limit the length of the AI's responses. A 'token' is basically a word - 500 tokens is about 400 words in most tokenizers. Leave this blank to allow unlimited tokens to be generated per message. Note that you can also control the length of the AI's responses in the reminder message by saying something like 'Your response should be at most 3 sentences' or whatever.", type:"textLine", defaultValue:defaultValues.maxTokensPerMessage || "" },
           fitMessagesInContextMethod: { hidden:true, label: "Method for fitting messages within model's context limit.", type:"select", options:[{value:"dropOld", content:"drop oldest messages"}, {value:"summarizeOld", content:"summarize oldest messages"}], defaultValue: defaultValues.fitMessagesInContextMethod ?? "summarizeOld" },
           textEmbeddingModelName: { hidden:true, label: "Text embedding model:", infoTooltip:"Yep, there's currently only one option for this. Will add more in the future. It's what converts each memory/lore entry (text) into a bunch of numbers that can be efficiently used for search/similarity/lookup.", type:"select", options:[...broadlyAvailableModels.filter(m => m.type === "text-embedding").map(m => ({value:m.name, content:m.name}))], defaultValue: defaultValues.textEmbeddingModelName ?? "text-embedding-ada-002" },
@@ -3073,13 +3514,16 @@
         messageObj = structuredClone(messageObj);
         delete messageObj.character; // just in case I'm sloppy somewhere
 
-        if(messageObj.order === undefined) {
-          let messages = await db.messages.where({threadId:messageObj.threadId}).toArray();
-          messages.sort((a,b) => a.order - b.order);
-          messageObj.order = messages.length > 0 ? messages.at(-1).order + 1 : 0;
-        }
-
-        let id = await db.messages.add(messageObj);
+        // compute `order` and add the message within a single transaction so concurrent writes
+        // (e.g. from custom code) can't produce duplicate order values
+        let id = await db.transaction("rw", db.messages, async () => {
+          if(messageObj.order === undefined) {
+            let messages = await db.messages.where({threadId:messageObj.threadId}).toArray();
+            messages.sort((a,b) => a.order - b.order);
+            messageObj.order = messages.length > 0 ? messages.at(-1).order + 1 : 0;
+          }
+          return await db.messages.add(messageObj);
+        });
         // update the thread's lastMessageTime.
         await db.threads.update(messageObj.threadId, { lastMessageTime: messageObj.creationTime });
         
@@ -3099,16 +3543,17 @@
       let userModelCapabilities = {};
       (async function() {
         userModelCapabilities = (await db.misc.get("userModelCapabilities"))?.value ?? {};
-        
+
+        // wait for the db to be open and the user's API key to be set
+        let openAiApiKey;
         while(1) {
           await delay(1000);
           if(!await db.isOpen()) {
             continue;
           }
-          // wait for user's API key to be set
-          let openAiApiKey = (await db.misc.get("openAiApiKey"))?.value;
-          if(!openAiApiKey) {
-            continue;
+          openAiApiKey = (await db.misc.get("openAiApiKey"))?.value;
+          if(openAiApiKey) {
+            break;
           }
         }
 
@@ -3117,7 +3562,7 @@
             "headers": { "authorization": `Bearer ${openAiApiKey}`, "content-type": "application/json" },
             "body": JSON.stringify({
               model: "gpt-4",
-              messages: [{role:"user", text:"Hi."}],
+              messages: [{role:"user", content:"Hi."}],
               max_tokens: 5,
             }),
             "method": "POST",
@@ -3125,7 +3570,7 @@
 
           userModelCapabilities["gpt-4"] = {
             canRun,
-            reason: canRun ? null : "You don't have access to the GPT-4 model. You need to join the waitlist: https://openai.com/waitlist/gpt-4-api",
+            reason: canRun ? null : "Your API key doesn't have access to the GPT-4 model.",
           };
         }
 
@@ -3136,11 +3581,8 @@
         let aiCharacter = await db.characters.get(characterId);
 
         let modelName = aiCharacter.modelName;
-        if(modelName === "good") modelName = "gpt-3.5-turbo";
-        if(modelName === "great") {
-          if(userModelCapabilities["gpt-4"]?.canRun) modelName = "gpt-4";
-          else modelName = Date.now() < new Date("2024-01-04").getTime() ? "text-davinci-003" : "gpt-3.5-turbo-instruct";
-        }
+        if(modelName === "good") modelName = "gpt-4o-mini";
+        if(modelName === "great") modelName = "gpt-4o";
 
         // get highest bookId value:
         let loreBookId = (await db.lore.orderBy("bookId").last() ?? {bookId:-1}).bookId;
@@ -3205,11 +3647,15 @@
             // the server has correct CORS headers, so we don't need the proxy:
             downloadUrl = url;
           } else {
-            // code for this CORS proxy server is here: https://replit.com/@joe64/opencharacters-cors-proxy
-            // EDIT: Moved to Glitch since Replit raised prices to an absurd $6/month for a 0.25 vCPU machine in Jan 2024 (no more "Always On" machines - only "Deployments" now).
-            downloadUrl = "https://opencharacters-cors-proxy.glitch.me/?url=" + encodeURIComponent(url);
+            downloadUrl = corsProxiedUrl(url);
           }
-          let text = await fetch(downloadUrl).then(r => r.text());
+          // lore downloads are safe, read-only GETs, so try a direct fetch first and only fall back to the proxy
+          let text;
+          if(downloadUrl === url) {
+            text = await fetch(downloadUrl).then(r => r.text());
+          } else {
+            text = await fetch(url).then(r => r.ok ? r.text() : Promise.reject(new Error("direct fetch failed"))).catch(() => fetch(downloadUrl).then(r => r.text()));
+          }
           let entryTextArr = text.replace(/\r/g, "").split(/\n{2,}/).map(entry => entry.trim()).filter(entry => entry);
           
           let textHashes = await Promise.all(entryTextArr.map(e => sha256Text(e)));
@@ -3262,14 +3708,16 @@
 
         let modelObj = availableModels[modelName];
 
-        // TODO: get actual GPT-4 tokenizer
-        if(modelName.startsWith("gpt-3.5-turbo") || modelName.startsWith("text-davinci-003") || modelName.startsWith("gpt-4")) {
+        // We use the GPT-3 tokenizer as a (conservative - i.e. it tends to over-count for newer models) ESTIMATE
+        // for all OpenAI-hosted models. That's safe for context-budgeting purposes, since over-counting just means
+        // summarization kicks in slightly earlier than strictly necessary.
+        let isOpenAiHostedModel = modelName.startsWith("gpt-") || modelName.startsWith("chatgpt-") || modelName.startsWith("o1") || modelName.startsWith("o3") || modelName.startsWith("o4") || modelName.startsWith("text-") || modelObj?.endpointUrl?.startsWith("https://api.openai.com/");
+        if(isOpenAiHostedModel || !modelObj?.modelUrl) {
+          // also used as a graceful fallback estimate for custom models that don't declare a modelUrl (rather than throwing)
           if(!gpt3Tokenizer) gpt3Tokenizer = createGpt3Tokenizer();
           modelNameToTokenizerCache[modelName] = gpt3Tokenizer;
           return gpt3Tokenizer;
         }
-
-        if(!modelObj.modelUrl) throw new Error("Model doesn't have a modelUrl: "+modelName);
 
         if(!window.AutoTokenizer) {
           let { AutoTokenizer } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.0.0-alpha.0/dist/transformers.js");
@@ -4422,7 +4870,7 @@
             signals,
           });
           if(!rawResult) {
-            if(!signals.stop) alert("There was an error getting the memory search queries. Please try again.");
+            if(!signals.stop) showToast("There was an error getting the memory search queries. Please try again.", {type:"error"});
             return {};
           }
 
@@ -4715,6 +5163,8 @@
 
         let modelObj = availableModels[modelName];
         let apiKey = modelObj.apiKey;
+        // some providers name their models differently than we label them in the UI (e.g. our "pollinations" -> their "openai")
+        let payloadModelName = modelObj.payloadModelName ?? modelName;
         
         if(apiKey === "<OPENAI>") {
           apiKey = await getOpenAiApiKey();
@@ -4736,9 +5186,11 @@
             try {
               json = JSON.parse(line);
             } catch(e) {
-              alert(`The streaming API response had some invalid JSON:\n\n${line}\n\n---\n\n${textBuffer}`);
-              console.error(e, line, textBuffer);
+              console.error("The streaming API response had some invalid JSON:", e, line, textBuffer);
+              showToast("The streaming API response contained some invalid JSON (see console for details).", {type:"error"});
+              return;
             }
+            if(!json?.choices?.[0]) return;
             let text;
 
             if(json.choices[0].text !== undefined) { // this indicates that we're streaming from a 'completion' (non-chat) model
@@ -4775,7 +5227,8 @@
             }
             if(chunkI === 0 && res?.value.trim().startsWith("{")) { // errors don't start with 'data'
               let json = JSON.parse(res.value);
-              if(!signals.stop) alert("Error streaming message:\n\n"+JSON.stringify(json.error, null, 2));
+              console.error("Error streaming message:", json.error);
+              if(!signals.stop) showToast(`Error streaming message: ${json.error.message ?? JSON.stringify(json.error)}`, {type:"error"});
               break;
             } else {
               textBuffer += res.value;
@@ -4824,7 +5277,7 @@
           let tokensInPrompt = await countTokensInMessages(messagesArr, modelName);
 
           let data = {
-            model: modelName,
+            model: payloadModelName,
             messages: messagesArr,
             temperature: replyingCharacter.temperature ?? 0.7,
           };
@@ -4852,16 +5305,13 @@
               method: "POST",
               signal: abortSignal,
             }).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:chat:streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:chat:streaming > fetch:", e);
             });
             
             if(response) { // <-- e.g. request was aborted by user
               const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
               await handleStreamingResponse(reader).catch(e => {  // this appends chunks to the `result` variable
-                if(!signals.stop) alert("getBotReply > modelType:chat > handleStreamingResponse:\n\n"+e.stack);
+                if(!signals.stop) reportApiError("getBotReply > modelType:chat > handleStreamingResponse:", e);
               });
               apiTokenUsage.completion += await countTokens(result, modelName);
               apiTokenUsage.total += await countTokens(result, modelName);
@@ -4874,10 +5324,7 @@
               body: JSON.stringify(data),
               signal: abortSignal,
             }).then(r => r.json()).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:chat:non-streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:chat:non-streaming > fetch:", e);
             });
 
             if(json?.error) {
@@ -4903,7 +5350,7 @@
           }
 
           let data = {
-            model: modelName,
+            model: payloadModelName,
             prompt,
             temperature: replyingCharacter.temperature ?? 0.7,
             stop: [`\n\n[[`],
@@ -4925,16 +5372,13 @@
               method: "POST",
               signal: abortSignal,
             }).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:general:streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:general:streaming > fetch:", e);
             });
             
             if(response) { // <-- e.g. request was aborted by user
               const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
               await handleStreamingResponse(reader).catch(e => {  // this appends chunks to the `result` variable
-                if(!signals.stop) alert("getBotReply > modelType:chat > handleStreamingResponse:\n\n"+e.stack);
+                if(!signals.stop) reportApiError("getBotReply > modelType:general > handleStreamingResponse:", e);
               });
               apiTokenUsage.completion += await countTokens(result, modelName);
               apiTokenUsage.total += await countTokens(result, modelName);
@@ -4947,10 +5391,7 @@
               body: JSON.stringify(data),
               signal: abortSignal,
             }).then(r => r.json()).catch(e => {
-              if(!signals.stop) {
-                if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-                else alert("getBotReply > modelType:general:non-streaming > fetch: \n\n"+e.stack);
-              }
+              if(!signals.stop) reportApiError("getBotReply > modelType:general:non-streaming > fetch:", e);
             });
             
             if(json?.error) {
@@ -5031,6 +5472,7 @@
 
         let modelObj = availableModels[modelName];
         let apiKey = modelObj.apiKey;
+        let payloadModelName = modelObj.payloadModelName ?? modelName;
         if(apiKey === "<OPENAI>") {
           apiKey = (await db.misc.get("openAiApiKey"))?.value;
         }
@@ -5060,7 +5502,7 @@
         if(modelType === "chat-completion") {
 
           let data = {
-            model:modelName,
+            model:payloadModelName,
             messages,
             temperature: temperature ?? 0.7,
           };
@@ -5075,10 +5517,7 @@
             body: JSON.stringify(data),
             signal: abortSignal,
           }).then(r => r.json()).catch(e => {
-            if(!signals.stop) {
-              if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-              else alert("getChatCompletion: "+e.stack);
-            }
+            if(!signals.stop) reportApiError("getChatCompletion:", e);
           });
           
           if(json?.error) {
@@ -5103,7 +5542,7 @@
           }
 
           let data = {
-            model:modelName,
+            model:payloadModelName,
             prompt: messagesFinal.map(m => `[[${m.name}]]: ${m.content}`).join("\n\n") + `\n\n[[${aiName}]]: `,
             temperature: temperature ?? 0.7,
             stop: [`\n\n[[`],
@@ -5119,10 +5558,7 @@
             body: JSON.stringify(data),
             signal: abortSignal,
           }).then(r => r.json()).catch(e => {
-            if(!signals.stop) {
-              if(e.stack.toString().toLowerCase().includes("failed to fetch")) alert("Looks like there was a network error. This can happen now and then - you may need to refresh the page. If it's happening quite often, please report this on Github or Discord.\n\ngetChatCompletion: "+e.stack);
-              else alert("getChatCompletion > modelType:general > fetch: \n\n"+e.stack);
-            }
+            if(!signals.stop) reportApiError("getChatCompletion > modelType:general > fetch:", e);
           });
           
           if(json?.error) {
@@ -5135,7 +5571,7 @@
           result = json?.choices?.[0].text.trim();
         }
 
-        if(apiTokenUsage) {
+        if(apiTokenUsage && threadId !== undefined) { // threadId can be undefined for one-off completions (e.g. generating a character from a web page)
           let usageData = {prompt:apiTokenUsage.prompt_tokens, completion:apiTokenUsage.completion_tokens, total:apiTokenUsage.total_tokens};
           await trackTokenUsage({threadId, modelName, usageData});
         }
@@ -5382,7 +5818,13 @@
         
         if(!forceReply) {
           let lastMessage = messagesVisibleToAi.at(-1);
-          if(botIsCurrentlyReplying) return;
+          if(botIsCurrentlyReplying) {
+            // a reply was warranted but one is already in flight - let the user know instead of silently dropping it
+            if(lastMessage && lastMessage.expectsReply !== false && lastMessage.characterId !== characterId) {
+              showToast("The AI is still writing its reply - please wait for it to finish (or press the stop button).");
+            }
+            return;
+          }
           if(!lastMessage) return;
           if(lastMessage.expectsReply === false) {
             return; // there is a message, and bot isn't replying, but the message explicitely says not to reply
@@ -5733,7 +6175,7 @@
         });
 
         messageEl.querySelector(".recomputeWithAltModelButton").addEventListener("click", async function() {
-          let modelNameOverride = Date.now() < new Date("2024-01-04").getTime() ? "text-davinci-003" : "gpt-3.5-turbo-instruct";
+          let modelNameOverride = "gpt-3.5-turbo-instruct";
           await regenerateMessage(messageEl, {modelNameOverride});
         });
 
@@ -6002,7 +6444,7 @@
           <div class="message ${messageObj.hiddenFrom?.includes("user") ? "hiddenFromUser" : ""}" data-id="${sanitizeHtml(messageObj.id)}" data-order="${sanitizeHtml(messageObj.order)}" data-character-id="${sanitizeHtml(messageObj.characterId)}" data-can-delete="true" data-hash="${messageObjHash}" style="${sanitizeHtml(wrapperStyle)}; position:relative;">
             <div style="text-align:center;"><button class="showHiddenMessageButton" style="cursor:pointer; font-size:0.65rem;">Show hidden message</button></div>
             <div class="bottomButtons">
-              <div class="brainButton emojiButton">🧠</div>
+              <div class="brainButton emojiButton" role="button" tabindex="0" aria-label="Show what the AI can currently remember" title="Show what the AI can currently remember">🧠</div>
             </div>
             <div class="messageWrap">
               <div class="avatar" style="${avatarUrl ? `background-image:url(${sanitizeHtml(avatarUrl)})` : ""};width:${sanitizeHtml(avatarWidth)}px; min-width:${sanitizeHtml(avatarWidth)}px; height:${sanitizeHtml(avatarHeight)}px; border-radius:${sanitizeHtml(avatarBorderRadius)};"></div>
@@ -6010,15 +6452,15 @@
                 <div class="info" style="flex-grow:1; display:flex; font-size:80%; align-items:center; user-select:none;">
                   <div class="characterName" style="font-weight:bold;">${sanitizeHtml(characterName)}</div>
                   <!-- <div class="time" style="font-size:0.8rem; opacity:0.5; margin-left:0.5rem; display: flex; align-items: center;">${getDateTimeString(messageObj.creationTime)}</div> -->
-                  <div class="editButton emojiButton" style="font-size:0.8rem; margin-left:1rem; display: flex; align-items: center; cursor:pointer;">✏️</div>
-                  <div class="deleteButton emojiButton" style="font-size:0.8rem; margin-left:1rem; display: flex; align-items: center; cursor:pointer;">🗑️</div>
+                  <div class="editButton emojiButton" role="button" tabindex="0" aria-label="Edit message" title="Edit message" style="font-size:0.8rem; margin-left:1rem; display: flex; align-items: center; cursor:pointer;">✏️</div>
+                  <div class="deleteButton emojiButton" role="button" tabindex="0" aria-label="Delete message" title="Delete message" style="font-size:0.8rem; margin-left:1rem; display: flex; align-items: center; cursor:pointer;">🗑️</div>
                   <div style="position:relative;display:flex; align-items:center;">
-                    <div class="recomputeButton emojiButton" style="font-size:0.8rem; margin-left:1rem; display:flex; align-items: center; cursor:pointer;">🔁</div>
-                    <div class="recomputeWithAltModelButton emojiButton" style="font-size:0.8rem; margin-left:1rem; display:${showRecomputeWithAltButtonModel ? "flex" : "none"}; align-items: center; cursor:pointer;" title="Regenerate this message with the davinci model (10x more expensive, but less filtered)">🙄</div>
+                    <div class="recomputeButton emojiButton" role="button" tabindex="0" aria-label="Regenerate message" title="Regenerate message" style="font-size:0.8rem; margin-left:1rem; display:flex; align-items: center; cursor:pointer;">🔁</div>
+                    <div class="recomputeWithAltModelButton emojiButton" role="button" tabindex="0" aria-label="Regenerate this message with an alternative completion model (may be less filtered)" style="font-size:0.8rem; margin-left:1rem; display:${showRecomputeWithAltButtonModel ? "flex" : "none"}; align-items: center; cursor:pointer;" title="Regenerate this message with an alternative completion model (may be less filtered)">🙄</div>
                     <div class="messageVariantsCtn" style="user-select:none; background: var(--button-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); min-width:max-content; ${sanitizeHtml(variantCtnCss)}">
-                      <span class="prevMessageVariantButton emojiButton">◄</span>
+                      <span class="prevMessageVariantButton emojiButton" role="button" tabindex="0" aria-label="Previous message variant">◄</span>
                       <span class="currentVariantNumber">${sanitizeHtml(currentVariantNumber)}<span style="opacity:0.5">/${sanitizeHtml(messageObj.variants.length)}</span></span>
-                      <span class="nextMessageVariantButton emojiButton">►</span>
+                      <span class="nextMessageVariantButton emojiButton" role="button" tabindex="0" aria-label="Next message variant">►</span>
                     </div>
                   </div>
                   ${messageObj.hiddenFrom?.includes("ai") ? `<div class="hiddenFromAiIcon" onclick="alert('This icon indicates that this message is hidden from the AI.')" title="The AI cannot see this message." style="font-size:0.8rem; margin-left:1rem; display:flex; align-items: center; cursor:pointer;">🙈</div>` : ""}
@@ -6626,7 +7068,7 @@
                 let regex = new RegExp(characterNameValidationPattern);
                 if(regex.test(arg)) {
                   thread.userCharacter.name = arg;
-                  alert(`Your name has been changed to "${arg}" for this particular thread.`);
+                  showToast(`Your name has been changed to "${arg}" for this particular thread.`);
                 } else {
                   alert(`Names must only contain letters, numbers, spaces, hyphens and underscores, and must be 64 characters or less. This is due to OpenAI API limitations.`);
                 }
@@ -6781,7 +7223,7 @@
         let pageLoadId = Math.random().toString();
         let iframeLoadPromise = new Promise((resolve, reject) => {
           function handler(e) {
-            if(e.data._id === pageLoadId) {
+            if(e.source === iframe.contentWindow && e.data._id === pageLoadId) {
               resolve();
               window.removeEventListener("message", handler);
             }
@@ -6835,14 +7277,12 @@
                 return target.call(thisArg, ...argumentsList);
               }
 
-              // Note: This proxy server's code is public - you can see the code here: https://replit.com/@joe64/opencharacters-cors-proxy
-              // It's what allows characters to make arbitrary requests to resources on the internet.
-              // DO NOT use this URL directly in your code. The URL may change in future and your code will break.
+              // Note: The CORS proxy is what allows characters to make arbitrary requests to resources on the internet.
+              // DO NOT use the proxy URL directly in your code. The URL may change in future (it's user-configurable in advanced settings) and your code will break.
               // Just use 'fetch' as normal and this proxy will be used automatically.
               // Note: I was originally trying a normal fetch and then only falling back to this CORS proxy if it failed, but the problem with that is that this would hit the endpoint twice, which may have side effects, and the user might not want that.
               // I may eventually have to add manual "exemptions" to skip proxying certain URLs that don't need it - like huggingface models, for example, since we could start to become bandwidth limited.
-              // EDIT: Moved to Glitch since Replit raised prices to an absurd $6/month for a 0.25 vCPU machine in Jan 2024 (no more "Always On" machines - only "Deployments" now).
-              const proxiedUrl = "https://opencharacters-cors-proxy.glitch.me?url=" + encodeURIComponent(url);
+              const proxiedUrl = "${corsProxyUrl.replace(/\/+$/, "")}/?url=" + encodeURIComponent(url);
               try {
                 if(typeof argumentsList[0] === "object") {
                   argumentsList[0] = new Request(proxiedUrl, argumentsList[0]);
@@ -6926,10 +7366,10 @@
               }),
               window: Object.seal({
                 show: function(args={}) {
-                  window.parent.postMessage({type:"showWindow", threadId:${threadId}, args}, "*");
+                  window.parent.postMessage({type:"showWindow", threadId:${threadId}, args}, "${window.location.origin}");
                 },
                 hide: function(args={}) {
-                  window.parent.postMessage({type:"hideWindow", threadId:${threadId}, args}, "*");
+                  window.parent.postMessage({type:"hideWindow", threadId:${threadId}, args}, "${window.location.origin}");
                 },
               }),
               //getCompletion: async function(options) {
@@ -6987,8 +7427,9 @@
             function callParentWindow(data) {
               let _id = Math.random().toString()+Math.random().toString();
               return new Promise((resolve, reject) => {
-                window.parent.postMessage({_id, data, threadId:${threadId}}, "*");
+                window.parent.postMessage({_id, data, threadId:${threadId}}, "${window.location.origin}");
                 function handler(e) {
+                  if(e.source !== window.parent) return;
                   if(e.data._id === _id) {
                     window.removeEventListener("message", handler);
                     if(e.data.success) resolve(e.data.result);
@@ -7356,7 +7797,12 @@
       }
 
       let customCodeResolvers = {}; // id -> resolver
+      // note: custom code iframes are sandboxed (opaque origin), so e.origin is "null" - we verify the sender via e.source instead
+      function isTrustedCustomCodeSource(e) {
+        return Object.values(customCodeIframes).some(iframe => iframe.contentWindow === e.source);
+      }
       window.addEventListener("message", function(e) {
+        if(!isTrustedCustomCodeSource(e)) return;
         let resolver = customCodeResolvers[e.data._id];
         if(resolver) {
           if(e.data.success) {
@@ -7507,12 +7953,14 @@
             customCodeCompletionUsage[threadId] += tokens;
             if(customCodeCompletionUsage[threadId] > customCodeCompletionTokenWarnLimit && !threadIdsAllowedToGoOverTokenLimit.has(threadId)) {
               if(threadIdsBlockedFromGoingOverTokenLimit.has(threadId)) {
+                customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Completion token limit exceeded - the user has blocked further API usage by this character's custom code."}, "*");
                 return;
               }
               if(confirm(`This character's custom code has used ${customCodeCompletionUsage[threadId].toLocaleString()} tokens. Would you like to continue?`)) {
                 threadIdsAllowedToGoOverTokenLimit.add(threadId);
               } else {
                 threadIdsBlockedFromGoingOverTokenLimit.add(threadId);
+                customCodeIframes[e.data.threadId].contentWindow.postMessage({_id:e.data._id, success:false, result:"Completion token limit exceeded - the user has blocked further API usage by this character's custom code."}, "*");
                 return;
               }
             }
@@ -7552,6 +8000,7 @@
       // this is for onclick handlers in messages
       window.runCodeInCustomCodeIframe = function(code) {
         let threadId = activeThreadId;
+        if(!customCodeIframes[threadId]) return; // no custom-code iframe to run this in
         let functionText = `function() {
           ${code}
         }`;
@@ -8044,24 +8493,32 @@
       });
 
 
-      $.threadSearchButton.addEventListener("click", async function() {
+      let latestThreadSearchId = 0;
+      async function runThreadSearch() {
+        let searchId = ++latestThreadSearchId; // guards against out-of-order async renders
         let query = $.threadSearchInput.value.trim();
         if(query) {
-          await renderThreadList({filterWithQuery: query});
+          await renderThreadList({filterWithQuery: query, searchStillCurrent: () => searchId === latestThreadSearchId});
         } else {
           // show all threads
           await renderThreadList();
         }
-      });
+      }
+      $.threadSearchButton.addEventListener("click", runThreadSearch);
       $.threadSearchInput.addEventListener("keydown", async e => {
         if(e.key === "Enter") {
-          $.threadSearchButton.click();
+          runThreadSearch();
         }
       });
-      // if user deletes all text from the search input, show all threads
+      // search as the user types (debounced, since searching scans message contents)
+      let threadSearchDebounceTimeout = null;
       $.threadSearchInput.addEventListener("input", async e => {
+        clearTimeout(threadSearchDebounceTimeout);
         if(!$.threadSearchInput.value.trim()) {
+          latestThreadSearchId++;
           await renderThreadList();
+        } else {
+          threadSearchDebounceTimeout = setTimeout(runThreadSearch, 300);
         }
       });
 
@@ -8161,7 +8618,7 @@
           });
           // create the history messages element:
           let ctn = document.createElement("div");
-          ctn.innerHTML = thread.userMessagesSentHistory.map(m => `<div class="historyItem" data-is-pinned="${m.isPinned}" data-message-text="${encodeURIComponent(m.text)}"><span class="pinButton">📌</span><span class="text">${m.text.slice(0, 500).replaceAll("\n", " ")}</span><span class="deleteButton">🗑️</span></div>`).join("");
+          ctn.innerHTML = thread.userMessagesSentHistory.map(m => `<div class="historyItem" data-is-pinned="${m.isPinned}" data-message-text="${encodeURIComponent(m.text)}"><span class="pinButton" role="button" aria-label="Pin message">📌</span><span class="text">${sanitizeHtml(m.text.slice(0, 500).replaceAll("\n", " "))}</span><span class="deleteButton" role="button" aria-label="Delete message from history">🗑️</span></div>`).join("");
           // position it above the message input text area, with same width:
           ctn.style.cssText = `
             max-height: min(40vh, 200px);
@@ -8258,6 +8715,7 @@
 
 
       $.settingsButton.addEventListener("click", async function() {
+        await JSON5Ready;
         // use prompt2 to collect user's name and avatar, using defaults from db.misc
         let userNameOriginal = (await db.misc.get("userName"))?.value || defaultUserName;
         let userAvatarUrlOriginal = (await db.misc.get("userAvatarUrl"))?.value || "";
@@ -8265,11 +8723,15 @@
         let customModelConfigsOriginal = (await db.misc.get("customModelConfigs"))?.value || [];
         let showInlineReminderOriginal = (await db.misc.get("showInlineReminder"))?.value || "yes";
         let customPostPageLoadMainThreadCodeOriginal = (await db.misc.get("customPostPageLoadMainThreadCode"))?.value || "";
+        let corsProxyUrlOriginal = (await db.misc.get("corsProxyUrl"))?.value || "";
+        let themePreferenceOriginal = (await db.misc.get("themePreference"))?.value || "system";
         const result = await prompt2({
           userName: {label: "Your name:", type: "textLine", defaultValue: userNameOriginal},
           userAvatarUrl: {label: "Your avatar URL:", type: "textLine", placeholder: "(optional)", defaultValue: userAvatarUrlOriginal},
           openAiApiKey: {label: "OpenAI API secret key (<a href='https://platform.openai.com/account/api-keys' target='_blank'>from here</a>):", type: "textLine", placeholder:"sk-...", defaultValue: openAiApiKeyOriginal},
+          themePreference: {label: "Theme:", type: "select", options:[{value:"system", content:"System (follow browser/OS setting)"}, {value:"light", content:"Light"}, {value:"dark", content:"Dark"}], defaultValue: themePreferenceOriginal},
           showInlineReminder: {hidden:true, label: "Show 'inline' reminder edit button:", type: "select", options:[{value:"yes"}, {value:"no"}], defaultValue: showInlineReminderOriginal},
+          corsProxyUrl: {hidden:true, label: `CORS proxy URL (leave blank for the default: ${defaultCorsProxyUrl}). Used for downloading lore files and for web requests made by character custom code. Refresh the page after changing this for it to take full effect.`, type: "textLine", placeholder: defaultCorsProxyUrl, defaultValue: corsProxyUrlOriginal},
           customModelConfigs: {hidden:true, cssText:"white-space:pre; font-family:monospace;", label: "Custom model configs (<a href='https://github.com/josephrocca/OpenCharacters/blob/main/docs/custom-models.md' target='_blank'>follow this guide</a>):", type: "text", placeholder:`{name:"...", endpointUrl:"..."}\n{name:"...", endpointUrl:"...", apiKey:"..."}\n...`, defaultValue: customModelConfigsOriginal.map(o => JSON5.stringify(o)).join("\n")},
           customPostPageLoadMainThreadCode: {hidden:true, height:"fit-content", cssText:"white-space:pre; font-family:monospace;", label: "This code will be run on this page after page load. You can use it to mod the OpenCharacters UI, or to e.g. <a href='https://gist.github.com/josephrocca/a82216e2f2fdf54ad8dd79dbd4cfd625' target='_blank'>proxy all `fetch` requests</a>, or whatever. Note that there are no backwards-compatibility guarantees on the main thread UI, so your code may break eventually. <b>This code can access all your data</b> - make sure it's from a trustworthy source if you didn't write it yourself (maybe ask GPT-4 what it does if you don't know how to code and are weary). Refresh the page after saving for your code to take effect.", placeholder:"// add code here", type: "text", defaultValue: customPostPageLoadMainThreadCodeOriginal},
         }, {showHiddenInputsText: "show advanced settings"});
@@ -8325,7 +8787,11 @@
         await db.misc.put({key: "customModelConfigs", value: customModelConfigs});
         await db.misc.put({key: "showInlineReminder", value: showInlineReminder});
         await db.misc.put({key: "customPostPageLoadMainThreadCode", value: customPostPageLoadMainThreadCode});
-        
+        await db.misc.put({key: "corsProxyUrl", value: result.corsProxyUrl.trim()});
+        corsProxyUrl = result.corsProxyUrl.trim() || defaultCorsProxyUrl;
+        await db.misc.put({key: "themePreference", value: result.themePreference});
+        applyTheme(result.themePreference);
+
         await updateModelList();
 
         // update the user's name and avatar in the message feed:
@@ -8380,14 +8846,16 @@
 
         let success = false;
         try {
-          if(await tryImportingDexieFile(file, options).catch(e => "fail") === "finished") {
+          if(await tryImportingDexieFile(file, options).catch(e => (console.error("tryImportingDexieFile failed:", e), "fail")) === "finished") {
             success = true;
-          } else if(await tryImportingTavernAIThreadFile(file, options).catch(e => "fail") === "finished") {
+          } else if(await tryImportingTavernAIThreadFile(file, options).catch(e => (console.error("tryImportingTavernAIThreadFile failed:", e), "fail")) === "finished") {
             success = true;
-          } else if(await tryImportingExternalCharacterFileFormat(file, options).catch(e => "fail") === "finished") {
+          } else if(await tryImportingExternalCharacterFileFormat(file, options).catch(e => (console.error("tryImportingExternalCharacterFileFormat failed:", e), "fail")) === "finished") {
             success = true;
           }
-        } catch(e) {}
+        } catch(e) {
+          console.error("Import failed:", e);
+        }
 
         loadingModal.delete();
 
@@ -8799,6 +9267,7 @@
           try {
             let loadingModal = createLoadingModal("Loading parser...");
             let ExifReader = await import('https://cdn.jsdelivr.net/npm/exifreader@4.12.0/+esm');
+            await JSON5Ready;
             loadingModal.delete();
 
             let tags = await ExifReader.load(file);
@@ -8975,6 +9444,14 @@
           window.location.hash = "";
           ignoreHashChange = false;
           return "addCharacter";
+        } else if(urlHashJson.generateCharacterFromUrl) {
+          // e.g. #{"generateCharacterFromUrl":"https://example.com"} - powers the "character from web page" bookmarklet
+          let sourceUrl = String(urlHashJson.generateCharacterFromUrl);
+          ignoreHashChange = true;
+          window.location.hash = "";
+          ignoreHashChange = false;
+          await promptAndGenerateCharacterFromWebPage(sourceUrl);
+          return "generateCharacterFromUrl";
         } else {
           return null;
         }
@@ -8989,7 +9466,18 @@
 
       let customPostPageLoadMainThreadCode = (await db.misc.get("customPostPageLoadMainThreadCode"))?.value || "";
       if(customPostPageLoadMainThreadCode.trim()) {
-        eval(customPostPageLoadMainThreadCode);
+        // this code runs with full access to the page (all your data, including your API key), so we require a
+        // one-time confirmation whenever the code changes, in case it was added by something other than the user
+        let codeHash = await sha256Text(customPostPageLoadMainThreadCode);
+        let approvedCodeHash = (await db.misc.get("approvedCustomMainThreadCodeHash"))?.value;
+        let approved = codeHash === approvedCodeHash;
+        if(!approved) {
+          approved = confirm(`Your settings contain custom code that runs on this page with FULL access to all your data (including your API key). Only run code that you wrote yourself or that comes from a source you trust.\n\nRun this code?\n\n${customPostPageLoadMainThreadCode.slice(0, 1000)}${customPostPageLoadMainThreadCode.length > 1000 ? "\n\n...(truncated - see Settings > advanced settings for the full code)" : ""}`);
+          if(approved) await db.misc.put({key:"approvedCustomMainThreadCodeHash", value:codeHash});
+        }
+        if(approved) {
+          eval(customPostPageLoadMainThreadCode);
+        }
       }
 
       if(await checkForHashCommand() === null) {
@@ -9032,21 +9520,10 @@
    
     </script>
 
-    <script>
-      try {
-        let isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 && navigator.userAgent && navigator.userAgent.indexOf('CriOS') == -1 && navigator.userAgent.indexOf('FxiOS') == -1;
-        let isTouchScreen = window.matchMedia("(pointer: coarse)").matches;
-        if(isSafari && window.innerWidth < 800 && isTouchScreen) {
-          let viewportMetaEl = document.querySelector("[name=viewport]");
-          if(!viewportMetaEl.getAttribute("content").includes("maximum-scale")) {
-            viewportMetaEl.setAttribute("content", viewportMetaEl.getAttribute("content") + ", maximum-scale=1");
-          }
-          console.log("Safari iOS detected. Added maximum-scale attribute to prevent zooming:", viewportMetaEl.getAttribute("content"));
-        }
-      } catch(e) {
-        console.error(e);
-      }
-    </script>
+    <!-- Note: we previously added maximum-scale=1 to the viewport meta tag on Safari iOS to prevent unwanted
+         auto-zoom when focusing inputs, but that also blocked deliberate pinch-zooming (an accessibility problem).
+         Inputs now use a 16px font size on coarse pointers (see the CSS), which prevents the auto-zoom without
+         disabling pinch-zoom. -->
 
   </body>
 </html>
