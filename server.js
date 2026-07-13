@@ -56,6 +56,11 @@ const MIME_TYPES = {
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
+function countStoreRows(data) {
+  if (!data || typeof data !== "object") return 0;
+  return Object.values(data).reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+}
+
 function readStore() {
   try {
     return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
@@ -65,6 +70,14 @@ function readStore() {
 }
 
 function writeStore(store) {
+  // keep a single backup so a bad client sync can't permanently destroy chat data
+  if (fs.existsSync(DATA_FILE)) {
+    try {
+      fs.copyFileSync(DATA_FILE, DATA_FILE + ".bak");
+    } catch (e) {
+      console.warn("[sync] could not write backup:", e.message);
+    }
+  }
   // write to a temp file then rename, so a crash mid-write can't corrupt the store
   const tmpFile = DATA_FILE + ".tmp";
   fs.writeFileSync(tmpFile, JSON.stringify(store));
@@ -120,6 +133,13 @@ async function handleApi(req, res, pathname) {
       // never persist the misc table, even if a client mistakenly sends it (it can contain the API key)
       delete body.data.misc;
       const prev = readStore();
+      const prevRows = countStoreRows(prev.data);
+      const newRows = countStoreRows(body.data);
+      if (prevRows > 0 && newRows === 0) {
+        console.warn(`[sync] rejected empty overwrite (server had ${prevRows} rows)`);
+        sendJson(res, 409, { error: "refusing to replace non-empty store with empty data", prevRows, savedAt: prev.savedAt, version: prev.version });
+        return true;
+      }
       const store = {
         version: (prev.version || 0) + 1,
         savedAt: Date.now(),
@@ -275,16 +295,70 @@ function proxyToPerchanceBridge(req, res, pathname) {
       if (!res.headersSent) sendJson(res, 503, { ok: false, error: "perchance bridge unavailable: " + e.message });
       resolve();
     });
-    // 4 minutes: perchance generations (esp. images, or with Turnstile retries) can be slow
-    proxyReq.setTimeout(240000, () => proxyReq.destroy(new Error("bridge timeout")));
+    // 8 minutes: bridge may retry text generation after browser recovery (up to ~4 min per attempt)
+    proxyReq.setTimeout(480000, () => proxyReq.destroy(new Error("bridge timeout")));
     req.pipe(proxyReq);
+  });
+}
+
+const FETCH_PAGE_BROWSER_UA =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+function isBlockedOrChallengePage(html, status) {
+  if (!html) return true;
+  if (status === 403 || status === 401 || status === 503) return true;
+  return /Just a moment|Please wait for verification|cf-browser-verification|challenge-platform|Attention Required|Enable JavaScript and cookies/i.test(html);
+}
+
+function roughExtractTextLength(html) {
+  if (!html) return 0;
+  const ogTitle = html.match(/property=["']og:title["'][^>]*content=["']([^"']+)["']/i)?.[1]
+    || html.match(/content=["']([^"']+)["'][^>]*property=["']og:title["']/i)?.[1] || "";
+  const metaDesc = html.match(/name=["']description["'][^>]*content=["']([^"']+)["']/i)?.[1]
+    || html.match(/property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1] || "";
+  const title = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").replace(/<[^>]+>/g, " ").trim();
+  let body = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
+  body = body.replace(/<(nav|footer|header|aside|form|template)[^>]*>[\s\S]*?<\/\1>/gi, " ");
+  body = body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return [ogTitle || title, metaDesc, body].filter(Boolean).join("\n\n").length;
+}
+
+function fetchPageViaBridge(url) {
+  return new Promise((resolve, reject) => {
+    let target;
+    try {
+      target = new URL("/v1/fetch-page?url=" + encodeURIComponent(url), PERCHANCE_BRIDGE_ORIGIN);
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    const req = http.request(
+      { method: "GET", hostname: target.hostname, port: target.port, path: target.pathname + target.search },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => { data += chunk; });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error("invalid JSON from bridge fetch-page"));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.setTimeout(60000, () => req.destroy(new Error("bridge fetch-page timeout")));
+    req.end();
   });
 }
 
 async function handleFetchPage(req, res) {
   let targetUrl;
+  let forceRender = false;
   try {
-    targetUrl = new URL(req.url, "http://localhost").searchParams.get("url");
+    const reqUrl = new URL(req.url, "http://localhost");
+    targetUrl = reqUrl.searchParams.get("url");
+    forceRender = reqUrl.searchParams.get("render") === "1" || reqUrl.searchParams.get("render") === "true";
   } catch (e) {
     return sendJson(res, 400, { error: "bad request" });
   }
@@ -306,36 +380,62 @@ async function handleFetchPage(req, res) {
     return sendJson(res, 400, { error: "refusing to fetch internal/private address" });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_PAGE_TIMEOUT_MS);
-  try {
-    const r = await fetch(targetUrl, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; OpenCharacters/1.0; +https://github.com/josephrocca/OpenCharacters)",
-        accept: "text/html,application/xhtml+xml,text/plain,*/*",
-      },
-    });
-    clearTimeout(timeout);
-    const contentType = r.headers.get("content-type") || "";
-    // read up to FETCH_PAGE_MAX_BYTES
-    const reader = r.body.getReader();
-    let received = 0;
-    const parts = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      received += value.length;
-      if (received > FETCH_PAGE_MAX_BYTES) { controller.abort(); break; }
-      parts.push(Buffer.from(value));
+  let result = null;
+  if (!forceRender) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_PAGE_TIMEOUT_MS);
+    try {
+      const r = await fetch(targetUrl, {
+        signal: controller.signal,
+        redirect: "follow",
+        headers: {
+          "user-agent": FETCH_PAGE_BROWSER_UA,
+          accept: "text/html,application/xhtml+xml,text/plain,application/xml;q=0.9,*/*;q=0.8",
+          "accept-language": "en-US,en;q=0.9",
+        },
+      });
+      clearTimeout(timeout);
+      const contentType = r.headers.get("content-type") || "";
+      const reader = r.body.getReader();
+      let received = 0;
+      const parts = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.length;
+        if (received > FETCH_PAGE_MAX_BYTES) { controller.abort(); break; }
+        parts.push(Buffer.from(value));
+      }
+      const html = Buffer.concat(parts).toString("utf8");
+      result = { ok: true, url: r.url, status: r.status, contentType, html, rendered: false };
+    } catch (e) {
+      clearTimeout(timeout);
+      result = { ok: false, url: targetUrl, status: 0, html: "", error: e.message, rendered: false };
     }
-    const html = Buffer.concat(parts).toString("utf8");
-    sendJson(res, 200, { ok: true, url: r.url, status: r.status, contentType, html });
-  } catch (e) {
-    clearTimeout(timeout);
-    sendJson(res, 502, { ok: false, error: "fetch failed: " + e.message });
   }
+
+  const needsRenderedFetch = forceRender
+    || !result?.html
+    || isBlockedOrChallengePage(result.html, result.status)
+    || roughExtractTextLength(result.html) < 80;
+
+  if (needsRenderedFetch) {
+    try {
+      const rendered = await fetchPageViaBridge(targetUrl);
+      if (rendered?.ok && rendered.html) {
+        result = rendered;
+      } else if (!result?.html) {
+        return sendJson(res, 502, { ok: false, error: rendered?.error?.message || "rendered fetch failed" });
+      }
+    } catch (e) {
+      console.warn("[fetch-page] rendered fetch failed:", e.message);
+      if (!result?.html) {
+        return sendJson(res, 502, { ok: false, error: "fetch failed: " + e.message });
+      }
+    }
+  }
+
+  sendJson(res, 200, result);
 }
 
 function serveStatic(req, res, pathname) {

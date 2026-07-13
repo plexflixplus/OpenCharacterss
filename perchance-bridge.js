@@ -34,21 +34,27 @@
 //                           (default "ai-text-plugin-tester")
 //   PERCHANCE_HEADLESS      "true" to force headless (default: headed; headed passes
 //                           Turnstile more often - run under xvfb on a server)
-//   PERCHANCE_MAX_CONCURRENCY  max simultaneous generations (default 2)
+//   PERCHANCE_MAX_CONCURRENCY  max simultaneous text generations (default 2)
+//   PERCHANCE_MAX_IMAGE_CONCURRENCY  max simultaneous image generations (default 1)
+//   PERCHANCE_GEN_TIMEOUT_MS  text generation timeout (default 4 min)
+//   PERCHANCE_KEEPALIVE_MS  ms between light session keepalives (default 4 min)
+//   PERCHANCE_PRELOAD_IMAGE "false" to skip preloading the image generator at boot
 
 const http = require("http");
 
 const PORT = Number(process.env.PERCHANCE_BRIDGE_PORT || 8080);
 const GENERATOR = process.env.PERCHANCE_GENERATOR || "ai-text-plugin-tester";
 const GENERATOR_URL = `https://perchance.org/${GENERATOR}`;
-// Image generation drives a separate page that imports Perchance's text-to-image-plugin
-// (ai-character-chat exposes it as `root.textToImagePlugin`).
 const IMAGE_GENERATOR = process.env.PERCHANCE_IMAGE_GENERATOR || "ai-character-chat";
 const IMAGE_GENERATOR_URL = `https://perchance.org/${IMAGE_GENERATOR}`;
 const HEADLESS = String(process.env.PERCHANCE_HEADLESS || "").toLowerCase() === "true";
-const MAX_CONCURRENCY = Number(process.env.PERCHANCE_MAX_CONCURRENCY || 2);
-const GEN_TIMEOUT_MS = 120000;
+const MAX_TEXT_CONCURRENCY = Number(process.env.PERCHANCE_MAX_TEXT_CONCURRENCY || process.env.PERCHANCE_MAX_CONCURRENCY || 2);
+const MAX_IMAGE_CONCURRENCY = Number(process.env.PERCHANCE_MAX_IMAGE_CONCURRENCY || 1);
+const KEEPALIVE_MS = Number(process.env.PERCHANCE_KEEPALIVE_MS || 4 * 60 * 1000);
+const PRELOAD_IMAGE = String(process.env.PERCHANCE_PRELOAD_IMAGE || "true").toLowerCase() !== "false";
+const GEN_TIMEOUT_MS = Number(process.env.PERCHANCE_GEN_TIMEOUT_MS || 240000);
 const IMG_TIMEOUT_MS = 180000;
+const CHUNK_FN_NAME = "__ocBridgeChunk";
 
 let chromium;
 try {
@@ -65,12 +71,195 @@ let context = null;
 let page = null;
 let genFrame = null;
 let browserUp = false;
-let lastVerifiedAt = 0; // timestamp of last successful generation
+let lastVerifiedAt = 0;
+let lastKeepaliveAt = 0;
 let starting = false;
-let activeGenerations = 0;
+let textRecovering = false;
+let activeTextGenerations = 0;
+let activeImageGenerations = 0;
+let healthBusy = false;
+let chunkHandlerBound = false;
+
+// Web-page scraping uses its own browser so fandom/wiki loads can't crash Perchance.
+let scrapeBrowser = null;
+let scrapeContext = null;
 
 const USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36";
+
+function handleTextBrowserLost(reason) {
+  console.warn(`[bridge] text browser session lost (${reason})`);
+  browserUp = false;
+  genFrame = null;
+  page = null;
+  context = null;
+  chunkHandlerBound = false;
+  browser = null;
+}
+
+function scheduleTextRecovery(reason) {
+  if (textRecovering || starting) return;
+  setImmediate(async () => {
+    if (await recoverTextPage(reason)) return;
+    if (browser && browser.isConnected()) {
+      await startBrowser("recovery-hard-restart");
+    } else {
+      handleTextBrowserLost(reason);
+      await startBrowser("recovery-after-disconnect");
+    }
+  });
+}
+
+function bindTextPageHandlers(p) {
+  p.on("close", () => {
+    console.warn("[bridge] text page closed");
+    browserUp = false;
+    scheduleTextRecovery("page-close");
+  });
+}
+
+async function recoverTextPage(reason) {
+  if (textRecovering || starting) return false;
+  if (!browser || !browser.isConnected() || !context) return false;
+  textRecovering = true;
+  try {
+    console.log(`[bridge] recovering text page (${reason})`);
+    chunkHandlerBound = false;
+    genFrame = null;
+    page = null;
+    const p = await context.newPage();
+    p.__ocBridgeOnChunk = null;
+    bindTextPageHandlers(p);
+    await p.goto(GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await waitForCondition(async () => {
+      page = p;
+      return !!(await findGeneratorFrame());
+    }, { timeoutMs: 20000, intervalMs: 300, label: "text generator frame" });
+    page = p;
+    genFrame = await findGeneratorFrame();
+    if (!genFrame) throw new Error("generator frame not found after recovery");
+    await bindChunkHandler();
+    await genFrame.evaluate(() => {
+      try { window.root.ai({ preload: true }); } catch (e) {}
+    }).catch(() => {});
+    browserUp = true;
+    lastKeepaliveAt = Date.now();
+    console.log("[bridge] text page recovered");
+    return true;
+  } catch (e) {
+    console.warn("[bridge] text page recovery failed:", e.message);
+    return false;
+  } finally {
+    textRecovering = false;
+  }
+}
+
+function handleImageBrowserLost(reason) {
+  console.warn(`[bridge] image browser session lost (${reason})`);
+  imagePage = null;
+  imageFrame = null;
+  imageContext = null;
+  imageBrowser = null;
+  imageBrowserUp = false;
+}
+
+async function stopImageBrowser() {
+  const b = imageBrowser;
+  handleImageBrowserLost("stop-image-browser");
+  try { if (b) await b.close(); } catch (e) {}
+}
+
+async function ensureImageBrowser() {
+  if (imageBrowser && imageBrowser.isConnected() && imageContext) return imageContext;
+  await stopImageBrowser();
+  console.log(`[bridge] launching image browser (headless=${HEADLESS}) -> ${IMAGE_GENERATOR_URL}`);
+  imageBrowser = await chromium.launch({
+    headless: HEADLESS,
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-gpu",
+      "--enable-unsafe-swiftshader",
+    ],
+  });
+  imageContext = await imageBrowser.newContext({ userAgent: USER_AGENT, viewport: { width: 1280, height: 900 } });
+  await configureContext(imageContext);
+  imageBrowser.on("disconnected", () => {
+    console.warn("[bridge] image browser disconnected");
+    handleImageBrowserLost("image-browser-disconnected");
+  });
+  imageBrowserUp = true;
+  return imageContext;
+}
+
+async function stopScrapeBrowser() {
+  scrapeContext = null;
+  try { if (scrapeBrowser) await scrapeBrowser.close(); } catch (e) {}
+  scrapeBrowser = null;
+}
+
+async function ensureScrapeBrowser() {
+  if (scrapeBrowser && scrapeBrowser.isConnected()) return scrapeContext;
+  await stopScrapeBrowser();
+  scrapeBrowser = await chromium.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
+  });
+  scrapeContext = await scrapeBrowser.newContext({
+    userAgent: USER_AGENT,
+    viewport: { width: 1280, height: 900 },
+  });
+  return scrapeContext;
+}
+
+let imageQueue = Promise.resolve();
+function enqueueImageTask(task) {
+  const run = imageQueue.then(task, task);
+  imageQueue = run.catch(() => {});
+  return run;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function waitForCondition(fn, { timeoutMs = 30000, intervalMs = 250, label = "condition" } = {}) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      if (await fn()) return true;
+    } catch (e) {}
+    await sleep(intervalMs);
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
+function shouldAllowRequest(url, resourceType) {
+  if (/challenges\.cloudflare\.com|turnstile|cloudflare\.com\/cdn-cgi/.test(url)) return true;
+  if (resourceType === "document" || resourceType === "script" || resourceType === "xhr" || resourceType === "fetch") return true;
+  if (resourceType === "stylesheet") return /perchance\.org/.test(url);
+  return false;
+}
+
+async function configureContext(ctx) {
+  await ctx.route("**/*", (route) => {
+    const req = route.request();
+    const url = req.url();
+    const type = req.resourceType();
+    if (shouldAllowRequest(url, type)) return route.continue();
+    return route.abort();
+  });
+}
+
+async function bindChunkHandler() {
+  if (!page || chunkHandlerBound) return;
+  await page.exposeFunction(CHUNK_FN_NAME, (delta) => {
+    if (typeof delta !== "string" || !page.__ocBridgeOnChunk) return;
+    try { page.__ocBridgeOnChunk(delta); } catch (e) {}
+  }).catch(() => {});
+  chunkHandlerBound = true;
+}
 
 async function findGeneratorFrame() {
   if (!page) return null;
@@ -80,35 +269,77 @@ async function findGeneratorFrame() {
   );
 }
 
-async function startBrowser() {
+async function refreshTextFrame({ reason = "unknown" } = {}) {
+  if (!page || page.isClosed()) return false;
+  genFrame = await findGeneratorFrame();
+  if (genFrame) return true;
+  console.warn(`[bridge] text generator frame missing (${reason}) - reloading page`);
+  try {
+    await page.goto(GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await waitForCondition(async () => !!(await findGeneratorFrame()), {
+      timeoutMs: 20000,
+      intervalMs: 300,
+      label: "text generator frame",
+    });
+    genFrame = await findGeneratorFrame();
+    if (genFrame) {
+      await genFrame.evaluate(() => {
+        try { window.root.ai({ preload: true }); } catch (e) {}
+      }).catch(() => {});
+      return true;
+    }
+  } catch (e) {
+    console.warn("[bridge] soft text-frame recovery failed:", e.message);
+  }
+  return false;
+}
+
+async function startBrowser(reason = "startup") {
   if (starting) return;
   starting = true;
   try {
     await stopBrowser();
-    console.log(`[bridge] launching browser (headless=${HEADLESS}) -> ${GENERATOR_URL}`);
+    console.log(`[bridge] launching browser (headless=${HEADLESS}, reason=${reason}) -> ${GENERATOR_URL}`);
     browser = await chromium.launch({
       headless: HEADLESS,
-      args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-blink-features=AutomationControlled",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--disable-gpu",
+        "--enable-unsafe-swiftshader",
+      ],
     });
     context = await browser.newContext({ userAgent: USER_AGENT, viewport: { width: 1280, height: 900 } });
+    await configureContext(context);
     page = await context.newPage();
-    page.on("close", () => { browserUp = false; });
-    browser.on("disconnected", () => { browserUp = false; browser = null; });
+    page.__ocBridgeOnChunk = null;
+    bindTextPageHandlers(page);
+    browser.on("disconnected", () => {
+      console.warn("[bridge] browser disconnected");
+      handleTextBrowserLost("browser-disconnected");
+      scheduleTextRecovery("browser-disconnected");
+    });
 
     await page.goto(GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-    // give the generator's sandboxed iframe time to boot and the plugin to init:
-    await page.waitForTimeout(6000);
+    await waitForCondition(async () => !!(await findGeneratorFrame()), {
+      timeoutMs: 20000,
+      intervalMs: 300,
+      label: "text generator frame",
+    });
     genFrame = await findGeneratorFrame();
     if (!genFrame) throw new Error("could not find the generator frame after navigation");
 
-    // kick off user verification (Turnstile) proactively via the plugin's preload path:
+    await bindChunkHandler();
     await genFrame.evaluate(() => {
       try { window.root.ai({ preload: true }); } catch (e) {}
     }).catch(() => {});
-    // Turnstile often needs extra time after preload before the first generation succeeds.
-    await page.waitForTimeout(15000);
 
     browserUp = true;
+    lastKeepaliveAt = Date.now();
     console.log("[bridge] browser ready; generator frame located");
   } catch (e) {
     console.error("[bridge] startBrowser failed:", e.message);
@@ -119,18 +350,16 @@ async function startBrowser() {
 }
 
 async function stopBrowser() {
-  browserUp = false;
-  genFrame = null;
-  page = null;
-  imagePage = null;
-  imageFrame = null;
-  context = null;
-  try { if (browser) await browser.close(); } catch (e) {}
-  browser = null;
+  const b = browser;
+  handleTextBrowserLost("stop-browser");
+  try { if (b) await b.close(); } catch (e) {}
 }
 
-// ---- image generation page (text-to-image-plugin host) ----------------------
+// ---- image generation (separate browser so GPU-heavy renders can't crash text) -
 
+let imageBrowser = null;
+let imageContext = null;
+let imageBrowserUp = false;
 let imagePage = null;
 let imageFrame = null;
 let imagePageStarting = false;
@@ -145,21 +374,23 @@ async function findImageFrame() {
 }
 
 async function ensureImageReady() {
-  if (!browserUp || !browser) await startBrowser();
-  if (!browser || !context) return false;
+  const ctx = await ensureImageBrowser();
+  if (!ctx) return false;
   if (imagePageStarting) {
-    // another request is already booting the page - wait for it
-    for (let i = 0; i < 60 && imagePageStarting; i++) await new Promise((r) => setTimeout(r, 1000));
+    for (let i = 0; i < 60 && imagePageStarting; i++) await sleep(500);
   }
   if (!imagePage || imagePage.isClosed() || !(await findImageFrame())) {
     imagePageStarting = true;
     try {
       if (imagePage && !imagePage.isClosed()) { try { await imagePage.close(); } catch (e) {} }
       console.log(`[bridge] loading image generator page -> ${IMAGE_GENERATOR_URL}`);
-      imagePage = await context.newPage();
+      imagePage = await ctx.newPage();
       await imagePage.goto(IMAGE_GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-      // give the generator's sandboxed iframe time to boot and the plugin to init:
-      await imagePage.waitForTimeout(10000);
+      await waitForCondition(async () => {
+        imageFrame = await findImageFrame();
+        if (!imageFrame) return false;
+        return imageFrame.evaluate(() => !!(window.root && window.root.textToImagePlugin)).catch(() => false);
+      }, { timeoutMs: 25000, intervalMs: 400, label: "image generator plugin" });
     } catch (e) {
       console.error("[bridge] image generator page failed to load:", e.message);
     } finally {
@@ -167,25 +398,13 @@ async function ensureImageReady() {
     }
   }
   imageFrame = await findImageFrame();
-  if (imageFrame) {
-    // wait until the plugin function is actually available on the frame's root
-    try {
-      for (let i = 0; i < 30; i++) {
-        const ready = await imageFrame.evaluate(() => !!(window.root && window.root.textToImagePlugin)).catch(() => false);
-        if (ready) return true;
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    } catch (e) {}
-  }
-  return false;
+  return !!imageFrame;
 }
 
-async function generateImage(options) {
+async function generateImageOnce(options) {
   const ok = await ensureImageReady();
   if (!ok) throw new Error("perchance image generator is not ready");
 
-  // The plugin's iframe only starts generating when it's actually rendered (IntersectionObserver),
-  // and background tabs don't render - so the image page must be the active tab while generating.
   try { await imagePage.bringToFront(); } catch (e) {}
   console.log(`[bridge] image generation started: ${String(options.prompt).slice(0, 80)}...`);
 
@@ -200,7 +419,6 @@ async function generateImage(options) {
           resolution: opts.resolution || undefined,
           style: "z-index:10000; opacity:0.4; position:fixed; top:0.5rem; right:0.5rem; transform-origin:top right; transform:scale(0.3);",
         });
-        // the plugin's iframe must be on the page in case captcha verification is needed
         let iframeEl = null;
         if (resultObj.iframeHtml) {
           const tmp = document.createElement("div");
@@ -220,33 +438,44 @@ async function generateImage(options) {
     new Promise((_, rej) => setTimeout(() => rej(new Error("image generation timed out")), IMG_TIMEOUT_MS)),
   ]);
 
-  // give the text-gen page its rendering back (Turnstile checks need a visible tab)
-  try { if (page && !page.isClosed()) await page.bringToFront(); } catch (e) {}
-
   if (!result || !result.dataUrl) throw new Error("perchance returned no image (likely verification failure)");
   console.log("[bridge] image generation finished");
   lastImageVerifiedAt = Date.now();
   return result.dataUrl;
 }
 
-async function ensureReady() {
-  if (!browserUp || !browser || !page || page.isClosed()) {
-    await startBrowser();
-  }
-  if (browserUp) {
-    genFrame = await findGeneratorFrame();
-    if (!genFrame) {
-      // the generator frame vanished (e.g. page reloaded) - try a fresh navigation
-      try {
-        await page.goto(GENERATOR_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-        await page.waitForTimeout(5000);
-        genFrame = await findGeneratorFrame();
-      } catch (e) {
-        browserUp = false;
-      }
+async function generateImage(options) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await generateImageOnce(options);
+    } catch (e) {
+      const retryable = /disconnected|closed|not ready|timed out|target closed|crashed/i.test(String(e.message));
+      if (attempt >= 2 || !retryable) throw e;
+      console.warn(`[bridge] image gen attempt ${attempt} failed, restarting image browser:`, e.message);
+      await stopImageBrowser();
+      await sleep(2000);
     }
   }
-  return browserUp && !!genFrame;
+}
+
+async function ensureReady() {
+  if (!browserUp || !browser || !page || page.isClosed()) {
+    await startBrowser("ensure-ready");
+  }
+  if (!browserUp) return false;
+  if (!(await refreshTextFrame({ reason: "ensure-ready" }))) {
+    browserUp = false;
+    return false;
+  }
+  return true;
+}
+
+async function runKeepalive() {
+  if (!browserUp || !genFrame) return;
+  await genFrame.evaluate(() => {
+    try { window.root.ai({ preload: true }); } catch (e) {}
+  }).catch(() => {});
+  lastKeepaliveAt = Date.now();
 }
 
 // ---- prompt conversion (OpenAI chat -> Perchance instruction/startWith) -----
@@ -270,9 +499,8 @@ function messagesToPerchancePrompt(messages) {
 }
 
 // ---- core generation via the in-page plugin --------------------------------
-// onChunk(deltaText) is called for each incremental chunk. Resolves to full text.
 
-async function generate({ messages, stop, onChunk, signal }) {
+async function generateOnce({ messages, stop, onChunk }) {
   const ready = await ensureReady();
   if (!ready) throw new Error("perchance bridge browser is not ready");
 
@@ -280,14 +508,11 @@ async function generate({ messages, stop, onChunk, signal }) {
   const stopSequences = Array.isArray(stop) ? stop.slice(0, 8) : stop ? [stop] : [];
   stopSequences.push("\nUser:", "\nSystem:");
 
-  // Expose a callback the page can push streaming chunks to:
-  const chunkFnName = "__ocBridgeChunk_" + Math.random().toString(36).slice(2);
   let full = "";
-  await page.exposeFunction(chunkFnName, (delta) => {
-    if (typeof delta !== "string") return;
+  page.__ocBridgeOnChunk = (delta) => {
     full += delta;
     if (onChunk) { try { onChunk(delta); } catch (e) {} }
-  }).catch(() => {}); // may already be bound if reused - ignore
+  };
 
   const result = await Promise.race([
     genFrame.evaluate(
@@ -305,15 +530,31 @@ async function generate({ messages, stop, onChunk, signal }) {
         });
         return { text: res.generatedText ?? res.text ?? "", stopReason: res.stopReason };
       },
-      { instruction, stopSequences, chunkFnName }
+      { instruction, stopSequences, chunkFnName: CHUNK_FN_NAME }
     ),
     new Promise((_, rej) => setTimeout(() => rej(new Error("generation timed out")), GEN_TIMEOUT_MS)),
   ]);
 
+  page.__ocBridgeOnChunk = null;
   const text = (result && result.text) || full || "";
   if (!text.trim()) throw new Error("perchance returned no text (likely Turnstile/verification failure)");
   lastVerifiedAt = Date.now();
+  lastKeepaliveAt = Date.now();
   return text.trim();
+}
+
+async function generate(opts) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await generateOnce(opts);
+    } catch (e) {
+      const retryable = /timed out|closed|disconnected|not ready|crashed|target page|browser has been closed/i.test(String(e.message));
+      if (attempt >= 2 || !retryable) throw e;
+      console.warn(`[bridge] text gen attempt ${attempt} failed:`, e.message);
+      if (!(await recoverTextPage("gen-retry"))) await startBrowser("gen-retry");
+      await sleep(3000);
+    }
+  }
 }
 
 // ---- HTTP server (OpenAI-compatible) ---------------------------------------
@@ -334,7 +575,7 @@ function readBody(req) {
 }
 
 async function handleChatCompletion(req, res) {
-  if (activeGenerations >= MAX_CONCURRENCY) {
+  if (activeTextGenerations >= MAX_TEXT_CONCURRENCY) {
     return sendJson(res, 429, { error: { message: "bridge busy - too many concurrent generations", type: "rate_limit" } });
   }
   let body;
@@ -347,7 +588,7 @@ async function handleChatCompletion(req, res) {
   const id = "chatcmpl-perchance-" + Math.random().toString(36).slice(2, 12);
   const created = Math.floor(Date.now() / 1000);
 
-  activeGenerations++;
+  activeTextGenerations++;
   try {
     if (wantStream) {
       res.writeHead(200, {
@@ -361,7 +602,6 @@ async function handleChatCompletion(req, res) {
           choices: [{ index: 0, delta: finish ? {} : { content: delta }, finish_reason: finish || null }] };
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       };
-      // prime a role delta so OpenAI-style parsers are happy:
       res.write(`data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: "perchance", choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }] })}\n\n`);
       try {
         await generate({ messages, stop: body.stop, onChunk: (d) => send(d, null) });
@@ -369,7 +609,6 @@ async function handleChatCompletion(req, res) {
         res.write("data: [DONE]\n\n");
         res.end();
       } catch (e) {
-        // stream already started - emit an error chunk then close
         res.write(`data: ${JSON.stringify({ error: { message: String(e.message) } })}\n\n`);
         res.end();
       }
@@ -384,14 +623,11 @@ async function handleChatCompletion(req, res) {
   } catch (e) {
     if (!res.headersSent) sendJson(res, 503, { error: { message: String(e.message), type: "bridge_unavailable" } });
   } finally {
-    activeGenerations--;
+    activeTextGenerations--;
   }
 }
 
 async function handleImageGeneration(req, res) {
-  if (activeGenerations >= MAX_CONCURRENCY) {
-    return sendJson(res, 429, { error: { message: "bridge busy - too many concurrent generations", type: "rate_limit" } });
-  }
   let body;
   try { body = JSON.parse(await readBody(req)); }
   catch (e) { return sendJson(res, 400, { error: { message: "invalid JSON body" } }); }
@@ -399,20 +635,111 @@ async function handleImageGeneration(req, res) {
   const prompt = typeof body.prompt === "string" ? body.prompt : "";
   if (!prompt.trim()) return sendJson(res, 400, { error: { message: "prompt required" } });
 
-  activeGenerations++;
   try {
-    const dataUrl = await generateImage({
-      prompt,
-      negativePrompt: typeof body.negativePrompt === "string" ? body.negativePrompt : undefined,
-      seed: body.seed,
-      guidanceScale: body.guidanceScale,
-      resolution: body.resolution,
+    const dataUrl = await enqueueImageTask(async () => {
+      activeImageGenerations++;
+      try {
+        return await generateImage({
+          prompt,
+          negativePrompt: typeof body.negativePrompt === "string" ? body.negativePrompt : undefined,
+          seed: body.seed,
+          guidanceScale: body.guidanceScale,
+          resolution: body.resolution,
+        });
+      } finally {
+        activeImageGenerations--;
+      }
     });
     sendJson(res, 200, { ok: true, dataUrl });
   } catch (e) {
     if (!res.headersSent) sendJson(res, 503, { ok: false, error: { message: String(e.message), type: "bridge_unavailable" } });
+  }
+}
+
+function extractPageContentInBrowser() {
+  const pickMeta = (sel) => document.querySelector(sel)?.getAttribute("content")?.trim() || "";
+  let title = pickMeta('meta[property="og:title"]') || pickMeta('meta[name="twitter:title"]') || (document.title || "").trim();
+  const metaDesc = pickMeta('meta[name="description"]') || pickMeta('meta[property="og:description"]') || pickMeta('meta[name="twitter:description"]');
+  let imageUrl = pickMeta('meta[property="og:image"]') || pickMeta('meta[name="twitter:image"]') || "";
+
+  const jsonLdParts = [];
+  for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const data = JSON.parse(script.textContent || "");
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        if (typeof item?.description === "string") jsonLdParts.push(item.description);
+        if (typeof item?.name === "string") jsonLdParts.push(item.name);
+        if (typeof item?.headline === "string") jsonLdParts.push(item.headline);
+        if (typeof item?.articleBody === "string") jsonLdParts.push(item.articleBody);
+      }
+    } catch (e) {}
+  }
+
+  const contentSelectors = [
+    "#mw-content-text",
+    ".mw-parser-output",
+    ".WikiaArticle",
+    ".page-content",
+    ".article-content",
+    ".post-content",
+    "[role='main']",
+    "main",
+    "article",
+    "#content",
+    "#main-content",
+  ];
+  let contentRoot = null;
+  for (const sel of contentSelectors) {
+    const el = document.querySelector(sel);
+    if (el && (el.innerText || "").replace(/\s+/g, " ").trim().length > 80) {
+      contentRoot = el;
+      break;
+    }
+  }
+  if (!contentRoot) contentRoot = document.body || document.documentElement;
+
+  let bodyText = (contentRoot?.innerText || "").replace(/\s+/g, " ").trim();
+  if (bodyText.length < 80) {
+    const headings = [...document.querySelectorAll("h1,h2,h3,p")].map((el) => (el.innerText || "").trim()).filter((t) => t.length > 20);
+    if (headings.length) bodyText = headings.join("\n");
+  }
+
+  const text = [title, metaDesc, ...jsonLdParts, bodyText].filter(Boolean).join("\n\n");
+  return { title, imageUrl, metaDesc, text, textLength: text.length };
+}
+
+async function fetchPageRendered(url) {
+  const ctx = await ensureScrapeBrowser();
+  const scrapePage = await ctx.newPage();
+  try {
+    console.log(`[bridge] rendering page for scrape: ${url.slice(0, 120)}`);
+    await scrapePage.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+    await scrapePage.waitForTimeout(2500);
+    await scrapePage.waitForSelector("#mw-content-text, .mw-parser-output, main, article, [role='main'], h1", { timeout: 8000 }).catch(() => {});
+    const extracted = await scrapePage.evaluate(extractPageContentInBrowser);
+    const html = await scrapePage.content();
+    return { ok: true, url: scrapePage.url(), status: 200, html, extracted, rendered: true };
   } finally {
-    activeGenerations--;
+    await scrapePage.close();
+  }
+}
+
+async function handleFetchPage(req, res) {
+  let targetUrl;
+  try {
+    targetUrl = new URL(req.url, "http://localhost").searchParams.get("url");
+  } catch (e) {
+    return sendJson(res, 400, { error: { message: "bad request" } });
+  }
+  if (!targetUrl) return sendJson(res, 400, { error: { message: "url query param required" } });
+
+  try {
+    const result = await fetchPageRendered(targetUrl);
+    sendJson(res, 200, result);
+  } catch (e) {
+    console.error("[bridge] fetch-page failed:", e.message);
+    sendJson(res, 502, { ok: false, error: { message: "rendered fetch failed: " + e.message } });
   }
 }
 
@@ -427,21 +754,21 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
   if (url.pathname === "/health") {
-    const verifiedRecently = lastVerifiedAt > 0 && Date.now() - lastVerifiedAt < 30 * 60 * 1000;
     return sendJson(res, 200, {
       ok: browserUp,
       browserUp,
-      // "ready" means the bridge has actually produced text at least once (i.e. Cloudflare
-      // verification succeeded). The client only exposes the Perchance model when this is true,
-      // so users on IPs where Turnstile refuses to verify don't get a broken model option.
       ready: browserUp && lastVerifiedAt > 0,
-      verifiedRecently,
+      verifiedRecently: lastVerifiedAt > 0 && Date.now() - lastVerifiedAt < 45 * 60 * 1000,
       lastVerifiedAt,
       generator: GENERATOR,
       imageGenerator: IMAGE_GENERATOR,
-      imageReady: !!(imagePage && !imagePage.isClosed()),
+      imageReady: !!(imageBrowserUp && imagePage && !imagePage.isClosed() && imageFrame),
+      imageBrowserUp,
       lastImageVerifiedAt,
-      activeGenerations,
+      activeTextGenerations,
+      activeImageGenerations,
+      maxTextConcurrency: MAX_TEXT_CONCURRENCY,
+      maxImageConcurrency: MAX_IMAGE_CONCURRENCY,
     });
   }
   if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
@@ -449,6 +776,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === "/v1/images/generations" && req.method === "POST") {
     return handleImageGeneration(req, res);
+  }
+  if (url.pathname === "/v1/fetch-page" && req.method === "GET") {
+    return handleFetchPage(req, res);
   }
   sendJson(res, 404, { error: { message: "not found" } });
 });
@@ -462,7 +792,13 @@ server.listen(PORT, () => {
 // ---- supervision within the process ----------------------------------------
 
 (async function boot() {
-  await startBrowser();
+  await startBrowser("boot");
+  if (PRELOAD_IMAGE) {
+    ensureImageReady().then((ok) => {
+      if (ok) console.log("[bridge] image generator preloaded");
+      else console.warn("[bridge] image generator preload skipped/failed (will load on first image request)");
+    }).catch(() => {});
+  }
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       await generate({ messages: [{ role: "user", content: "Say hi in one word." }] });
@@ -470,26 +806,34 @@ server.listen(PORT, () => {
       return;
     } catch (e) {
       console.warn(`[bridge] warm-up attempt ${attempt}/4 failed:`, e.message);
-      if (attempt < 4) await new Promise((r) => setTimeout(r, 15000));
+      if (attempt < 4) await sleep(8000);
     }
   }
   console.warn("[bridge] Perchance is not verified yet. The bridge will keep retrying in the background.");
 })();
 
-// keep the browser session healthy: re-verify / relaunch if it goes stale
 setInterval(async () => {
-  if (activeGenerations > 0) return;
+  if (activeTextGenerations > 0 || activeImageGenerations > 0 || healthBusy) return;
+  healthBusy = true;
   try {
     if (!browserUp || !browser || !page || page.isClosed()) {
-      await startBrowser();
-    } else if (Date.now() - lastVerifiedAt > 5 * 60 * 1000) {
-      // periodic keepalive generation so verification stays warm
-      await generate({ messages: [{ role: "user", content: "ping" }] }).catch(() => {});
+      if (browser && browser.isConnected() && context && (await recoverTextPage("health-check"))) return;
+      await startBrowser("health-restart");
+      return;
+    }
+    if (!(await refreshTextFrame({ reason: "health-check" }))) {
+      browserUp = false;
+      return;
+    }
+    if (Date.now() - lastKeepaliveAt > KEEPALIVE_MS) {
+      await runKeepalive();
     }
   } catch (e) {
     console.error("[bridge] health loop error:", e.message);
+  } finally {
+    healthBusy = false;
   }
 }, 60 * 1000);
 
-process.on("SIGTERM", async () => { await stopBrowser(); process.exit(0); });
-process.on("SIGINT", async () => { await stopBrowser(); process.exit(0); });
+process.on("SIGTERM", async () => { await stopBrowser(); await stopImageBrowser(); await stopScrapeBrowser(); process.exit(0); });
+process.on("SIGINT", async () => { await stopBrowser(); await stopImageBrowser(); await stopScrapeBrowser(); process.exit(0); });

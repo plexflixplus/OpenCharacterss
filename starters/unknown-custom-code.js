@@ -717,9 +717,13 @@ window.CharacterGenerator = (function () {
   function buildPhotorealisticImagePrompt(
     data
   ) {
+    const ageNum = Number(data.characterAge);
+    const agePhrase = Number.isFinite(ageNum) && ageNum >= 18
+      ? `one adult person, age ${data.characterAge}`
+      : "one adult person with mature 18+ appearance";
     return [
       "Photorealistic professional portrait photograph",
-      `one adult person, age ${data.characterAge}`,
+      agePhrase,
       data.characterName,
       `inferred tone: ${data.inferredTone}`,
       `genre aesthetic: ${data.inferredGenre}`,
@@ -831,6 +835,7 @@ window.CharacterGenerator = (function () {
             data.imageError
               ? `<br>${escapeHtml(data.imageError)}`
               : "",
+            `<br><span style="opacity:0.7;">Use the Regenerate Image button below to try again.</span>`,
             `</div>`
           ].join("");
     const content = [
